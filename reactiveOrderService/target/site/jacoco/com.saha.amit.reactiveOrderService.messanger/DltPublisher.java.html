@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DltPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">com.saha.amit</a> &gt; <a href="index.source.html" class="el_package">com.saha.amit.reactiveOrderService.messanger</a> &gt; <span class="el_source">DltPublisher.java</span></div><h1>DltPublisher.java</h1><pre class="source lang-java linenums">package com.saha.amit.reactiveOrderService.messanger;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.saha.amit.reactiveOrderService.events.OrderEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.kafka.sender.KafkaSender;
+import reactor.kafka.sender.SenderRecord;
+import reactor.kafka.sender.SenderResult;
+
+import java.nio.charset.StandardCharsets;
+
+<span class="fc" id="L18">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class DltPublisher {
+
+    private final @Qualifier(&quot;byteKafkaSender&quot;) KafkaSender&lt;String, byte[]&gt; kafkaSender;
+    private final ObjectMapper objectMapper;
+
+    @Value(&quot;${app.kafka.topic.order.dlt}&quot;)
+    private String dltTopic;
+
+    public Mono&lt;Void&gt; sendToDlt(OrderEvent event,
+                                String failureType,
+                                String reason,
+                                String sourceTopic,
+                                Integer partition,
+                                Long offset) {
+<span class="fc" id="L35">        return Mono.fromCallable(() -&gt; objectMapper.writeValueAsBytes(event))</span>
+<span class="fc" id="L36">                .flatMapMany(payload -&gt; kafkaSender</span>
+<span class="fc" id="L37">                        .send(Mono.just(buildSenderRecord(event, payload, failureType, reason, sourceTopic, partition, offset)))</span>
+<span class="fc" id="L38">                        .doOnNext(this::logResult))</span>
+<span class="fc" id="L39">                .then();</span>
+    }
+
+    private SenderRecord&lt;String, byte[], String&gt; buildSenderRecord(OrderEvent event,
+                                                                   byte[] payload,
+                                                                   String failureType,
+                                                                   String reason,
+                                                                   String sourceTopic,
+                                                                   Integer partition,
+                                                                   Long offset) {
+<span class="fc" id="L49">        ProducerRecord&lt;String, byte[]&gt; record = new ProducerRecord&lt;&gt;(dltTopic, event.customerId(), payload);</span>
+<span class="fc" id="L50">        record.headers()</span>
+<span class="fc" id="L51">                .add(&quot;failure-type&quot;, encode(failureType))</span>
+<span class="fc" id="L52">                .add(&quot;failure-reason&quot;, encode(reason))</span>
+<span class="fc" id="L53">                .add(&quot;source-topic&quot;, encode(sourceTopic))</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">                .add(&quot;source-partition&quot;, encode(partition != null ? partition.toString() : &quot;-1&quot;))</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">                .add(&quot;source-offset&quot;, encode(offset != null ? offset.toString() : &quot;-1&quot;));</span>
+<span class="fc" id="L56">        return SenderRecord.create(record, event.eventId());</span>
+    }
+
+    private byte[] encode(String value) {
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">        return value == null ? new byte[0] : value.getBytes(StandardCharsets.UTF_8);</span>
+    }
+
+    private void logResult(SenderResult&lt;String&gt; result) {
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (result.exception() == null) {</span>
+<span class="fc" id="L65">            log.warn(&quot;EventId={} routed to DLT topic={}&quot;, result.correlationMetadata(), dltTopic);</span>
+        } else {
+<span class="nc" id="L67">            log.error(&quot;Failed to publish eventId={} to DLT topic={} due to {}&quot;, result.correlationMetadata(), dltTopic, result.exception().getMessage());</span>
+        }
+<span class="fc" id="L69">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

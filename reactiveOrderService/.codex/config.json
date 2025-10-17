@@ -1,0 +1,11 @@
+{
+  "agent": {
+    "path": ".codex/agent.md"
+  },
+  "settings": {
+    "autoUpdateDocs": true,
+    "language": "java",
+    "framework": "spring-boot-reactive",
+    "domain": "kafka"
+  }
+}

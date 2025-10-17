@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutboxPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">com.saha.amit</a> &gt; <a href="index.source.html" class="el_package">com.saha.amit.reactiveOrderService.messanger</a> &gt; <span class="el_source">OutboxPublisher.java</span></div><h1>OutboxPublisher.java</h1><pre class="source lang-java linenums">package com.saha.amit.reactiveOrderService.messanger;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.saha.amit.reactiveOrderService.events.OrderEvent;
+import com.saha.amit.reactiveOrderService.model.OrderOutboxEntity;
+import com.saha.amit.reactiveOrderService.model.OutboxStatus;
+import com.saha.amit.reactiveOrderService.repository.OrderOutboxRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.Disposable;
+
+import java.time.Duration;
+import java.time.Instant;
+
+<span class="fc" id="L22">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class OutboxPublisher {
+
+    private final OrderOutboxRepository outboxRepository;
+    private final OrderEventPublisher orderEventPublisher;
+    private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
+
+    @Value(&quot;${app.kafka.outbox.poll-interval:PT1S}&quot;)
+    private Duration pollInterval;
+
+    @Value(&quot;${app.kafka.outbox.batch-size:50}&quot;)
+    private int batchSize;
+
+    @Value(&quot;${app.kafka.outbox.max-attempts:5}&quot;)
+    private int maxAttempts;
+
+    private Disposable subscription;
+
+    @PostConstruct
+    public void start() {
+<span class="nc" id="L45">        log.info(&quot;Starting OutboxPublisher with pollInterval={} batchSize={}&quot;, pollInterval, batchSize);</span>
+<span class="nc" id="L46">        subscription = Flux.interval(Duration.ZERO, pollInterval)</span>
+<span class="nc" id="L47">                .flatMap(tick -&gt; outboxRepository.findNextBatch(Instant.now(), batchSize))</span>
+<span class="nc" id="L48">                .flatMap(this::publishOutboxRecord, 1)</span>
+<span class="nc" id="L49">                .onErrorContinue((ex, record) -&gt; log.error(&quot;Outbox dispatch errored: {}&quot;, ex.getMessage()))</span>
+<span class="nc" id="L50">                .subscribe();</span>
+<span class="nc" id="L51">    }</span>
+
+    @PreDestroy
+    public void stop() {
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (subscription != null) {</span>
+<span class="nc" id="L56">            subscription.dispose();</span>
+        }
+<span class="nc" id="L58">    }</span>
+
+    private Mono&lt;Void&gt; publishOutboxRecord(OrderOutboxEntity entity) {
+<span class="fc" id="L61">        return Mono.defer(() -&gt; {</span>
+<span class="fc" id="L62">            OrderEvent event = deserialize(entity);</span>
+<span class="fc" id="L63">            return orderEventPublisher.publish(event)</span>
+<span class="fc" id="L64">                    .then(updateStatus(entity, OutboxStatus.PUBLISHED, null))</span>
+<span class="fc" id="L65">                    .doOnSuccess(ignored -&gt; meterRegistry.counter(&quot;order.outbox.published&quot;).increment())</span>
+<span class="fc" id="L66">                    .doOnError(ex -&gt; meterRegistry.counter(&quot;order.outbox.failed&quot;).increment())</span>
+<span class="fc" id="L67">                    .onErrorResume(ex -&gt; updateForRetry(entity, ex));</span>
+        });
+    }
+
+    private OrderEvent deserialize(OrderOutboxEntity entity) {
+        try {
+<span class="fc" id="L73">            return objectMapper.readValue(entity.getPayload(), OrderEvent.class);</span>
+<span class="nc" id="L74">        } catch (Exception e) {</span>
+<span class="nc" id="L75">            throw new IllegalStateException(&quot;Failed to deserialize outbox payload for id=&quot; + entity.getId(), e);</span>
+        }
+    }
+
+    private Mono&lt;Void&gt; updateStatus(OrderOutboxEntity entity, OutboxStatus status, String lastError) {
+<span class="fc" id="L80">        entity.setStatus(status);</span>
+<span class="fc" id="L81">        entity.setLastError(lastError);</span>
+<span class="fc" id="L82">        entity.setAvailableAt(Instant.now());</span>
+<span class="fc" id="L83">        entity.setAttempts(entity.getAttempts() + 1);</span>
+<span class="fc" id="L84">        return outboxRepository.save(entity).then();</span>
+    }
+
+    private Mono&lt;Void&gt; updateForRetry(OrderOutboxEntity entity, Throwable ex) {
+<span class="fc" id="L88">        entity.setAttempts(entity.getAttempts() + 1);</span>
+<span class="fc" id="L89">        entity.setLastError(ex.getMessage());</span>
+<span class="fc" id="L90">        entity.setStatus(OutboxStatus.FAILED);</span>
+
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">        if (entity.getAttempts() &gt;= maxAttempts) {</span>
+<span class="nc" id="L93">            log.error(&quot;Outbox entry {} exceeded max attempts, marking as FAILED&quot;, entity.getId());</span>
+<span class="nc" id="L94">            entity.setAvailableAt(Instant.now().plus(Duration.ofHours(1)));</span>
+<span class="nc" id="L95">            return outboxRepository.save(entity).then();</span>
+        }
+
+<span class="fc" id="L98">        Duration backoff = Duration.ofSeconds((long) Math.min(60, Math.pow(2, entity.getAttempts())));</span>
+<span class="fc" id="L99">        entity.setAvailableAt(Instant.now().plus(backoff));</span>
+<span class="fc" id="L100">        log.warn(&quot;Outbox entry {} failed (attempt {}), retrying after {}&quot;, entity.getId(), entity.getAttempts(), backoff);</span>
+<span class="fc" id="L101">        return outboxRepository.save(entity).then();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
