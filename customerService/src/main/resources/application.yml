@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: customer-service
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/amit?serverTimezone=Asia/Kolkata
+    username: root
+    password: shamit2020
+  config:
+    import: optional:configserver:http://localhost:8888
+
+server:
+  port: 8081
+
+logging:
+  pattern:
+    console: ${LOGPATTERN_CONSOLE:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%class.%M:%L) - %msg%n}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,refresh,busrefresh
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  metrics:
+    distribution:
+      percentiles:
+        http.server.requests: 0.5,0.9,0.95,0.99
+      slo:
+        http.server.requests: 100ms,250ms,500ms,1s,2s
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+app:
+  order-service:
+    base-url: http://order-service
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      orderService:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+  retry:
+    instances:
+      orderService:
+        maxAttempts: 3
+        waitDuration: 200ms
+        retryExceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+  bulkhead:
+    instances:
+      orderService:
+        maxConcurrentCalls: 20
+        maxWaitDuration: 200ms
+  timelimiter:
+    instances:
+      orderService:
+        timeoutDuration: 2s
+        cancelRunningFuture: false
+

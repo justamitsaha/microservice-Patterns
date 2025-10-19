@@ -1,0 +1,17 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: sample-webhook
+    receivers:
+      - uid: sample-webhook
+        type: webhook
+        settings:
+          url: http://example.com/webhook
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: sample-webhook
+    group_by: ['alertname']
+    routes: []
+

@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: order-service
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/amit?serverTimezone=Asia/Kolkata
+    username: root
+    password: shamit2020
+  kafka:
+    bootstrap-servers: 192.168.0.143:9092,192.168.0.143:9093,192.168.0.143:9094
+  config:
+    import: optional:configserver:http://localhost:8888
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
+
+logging:
+  pattern:
+    console: ${LOGPATTERN_CONSOLE:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%class.%M:%L) - %msg%n}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,refresh,busrefresh
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  metrics:
+    distribution:
+      percentiles:
+        http.server.requests: 0.5,0.9,0.95,0.99
+      slo:
+        http.server.requests: 100ms,250ms,500ms,1s,2s
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+# Kafka-related custom properties (kept for reference; read by service)
+app:
+  kafka:
+    topic:
+      order: order.events
+      dlt: order.events.dlt
+      retry: order.events.retry
+      proto: order.events.proto
+    retry:
+      max-attempts: 3
+    outbox:
+      poll-interval: PT1S
+      batch-size: 50
+      max-attempts: 5
+    schema-registry-url: http://localhost:8081
+

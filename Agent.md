@@ -25,6 +25,7 @@ I I want to learn microservice architectures, various design patterns. For this,
 - Centralized Configuration Pattern — externalize configuration.
 - Retry Pattern — handle transient failures gracefully.
 - Rate Limiting Pattern — control traffic and prevent abuse.
+- Swagger for documentation
 
 
 

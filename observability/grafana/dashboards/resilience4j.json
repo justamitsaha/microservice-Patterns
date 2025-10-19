@@ -1,0 +1,44 @@
+{
+  "id": null,
+  "title": "Resilience4j Overview",
+  "tags": ["resilience4j", "services"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CB State (Open=1, Closed=0)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "max(resilience4j_circuitbreaker_state{state=\"open\"}) by (name)", "legendFormat": "{{name}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Retry Calls/s",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(resilience4j_retry_calls_total[1m])) by (name, kind)", "legendFormat": "{{name}} {{kind}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Bulkhead Concurrent Calls",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "max(resilience4j_bulkhead_available_concurrent_calls) by (name)", "legendFormat": "{{name}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "TimeLimiter Timeouts/s",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {"expr": "sum(rate(resilience4j_timelimiter_timeouts_total[1m])) by (name)", "legendFormat": "{{name}}"}
+      ]
+    }
+  ]
+}
+

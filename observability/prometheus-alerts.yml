@@ -1,0 +1,30 @@
+groups:
+  - name: microservices-slo-alerts
+    rules:
+      - alert: HighLatencyHttpServer
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~"order-service|customer-service|gateway-service", outcome="SUCCESS"}[5m])) by (le, job)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.job }}"
+          description: "HTTP server p95 latency > 1s for 5m. Investigate upstream/downstream dependencies."
+
+      - alert: CircuitBreakerOpen
+        expr: max_over_time(resilience4j_circuitbreaker_state{state="open"}[2m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker OPEN ({{ $labels.name }})"
+          description: "One or more instances have open circuit breaker {{ $labels.name }} for 2+ minutes. Check downstream health."
+
+      - alert: HighGateway5xx
+        expr: sum(rate(http_server_requests_seconds_count{job="gateway-service", status=~"5.."}[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway 5xx rate high"
+          description: "Gateway returning >5 5xx responses/sec for 10m."
+
