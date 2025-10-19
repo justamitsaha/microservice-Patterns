@@ -11,7 +11,7 @@ processors:
 
 exporters:
   logging:
-    logLevel: info
+    verbosity: normal   # <-- fixed (was logLevel: info)
   otlp/tempo:
     endpoint: tempo:4317
     tls:
