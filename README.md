@@ -64,7 +64,30 @@ This repository demonstrates microservice patterns on Spring Boot WebFlux with r
 ### API Gateway
 - Path: `gatewayService`
 - Run: `cd gatewayService && ./mvnw spring-boot:run`
-- Discovery locator enables routes to `lb://order-service` and `lb://customer-service` automatically.
+- Routing is defined via a Spring bean RouteLocator.
+  - See: `gatewayService/src/main/java/com/saha/amit/gateway/config/GatewayRoutesConfig.java:1`
+  - Routes:
+    - `/orders/**` -> `lb://order-service`
+    - `/customers/**` -> `lb://customer-service`
+- Discovery locator is disabled in `application.yml` to avoid conflicts with bean routes.
+
+Filters applied
+- Headers: Adds `X-From-Gateway: true` to outbound requests and `X-Gateway: spring-cloud-gateway` to responses.
+- Retry: Retries upstream on 5xx (3 times orders, 2 times customers).
+- Circuit Breaker: Uses Spring Cloud CircuitBreaker (Resilience4j) with fallbacks:
+  - Orders fallback: `forward:/fallback/orders`
+  - Customers fallback: `forward:/fallback/customers`
+  - See controller: `gatewayService/src/main/java/com/saha/amit/gateway/controller/FallbackController.java:1`
+- Rate Limiting: RequestRateLimiter filter via RedisRateLimiter (10 req/s, burst 20) by client IP.
+  - Requires Redis. In Docker Compose, `redis` is provided.
+  - For local runs, set `SPRING_DATA_REDIS_HOST=localhost` (default) or to your Redis host.
+- Path Rewrite: Additional routes accept `/api/orders/**` and `/api/customers/**` and rewrite to backend `/orders/**` and `/customers/**`.
+
+Examples
+- Call orders through gateway: `curl -i http://localhost:8085/orders`
+- Path rewrite: `curl -i http://localhost:8085/api/orders`
+- Observe gateway headers: `curl -i http://localhost:8085/orders | grep -i x-gateway`
+- Simulate fallback (stop the target service) then call: `curl -i http://localhost:8085/orders` → returns 503 with JSON from fallback.
 
 ### Discovery Service
 - Path: `discoveryService`
@@ -95,6 +118,11 @@ Config files:
 4. Start the order service: `cd reactiveOrderService && ./mvnw spring-boot:run`
 5. Start the customer service: `cd customerService && ./mvnw spring-boot:run`
 6. Start the API Gateway: `cd gatewayService && ./mvnw spring-boot:run` (listens on `8085`)
+7. Start the Angular web app:
+   - `cd webapp`
+   - `npm install`
+   - `npm start` (opens http://localhost:4200)
+   - Angular dev server proxies `/api` -> `http://localhost:8085`, so the UI calls the gateway automatically.
 
 Swagger UIs:
 - Order: `http://localhost:8080/swagger-ui/index.html`
@@ -103,6 +131,25 @@ Swagger UIs:
 Gateway routes (via discovery):
 - `http://localhost:8085/orders/**` -> order service
 - `http://localhost:8085/customers/**` -> customer service
+
+## Angular Test App
+- Path: `webapp`
+- Purpose: simple UI to exercise customers and orders APIs via the gateway.
+- Proxy: `webapp/proxy.conf.json` forwards `/api` to `http://localhost:8085`.
+- Usage:
+  - Customers tab: create/list customers, click a row to fetch orders for that customer.
+  - Orders tab: create/list orders; filter by `customerId`.
+- Key files:
+  - `webapp/src/app/services/api.service.ts`: API client using Angular HttpClient.
+  - `webapp/src/app/app.component.ts`: shell with Material toolbar and routing.
+  - `webapp/src/app/customers.component.ts`: Material form/table for customers with toasts and validation.
+  - `webapp/src/app/orders.component.ts`: Material form/table for orders with toasts and validation.
+
+Build and run with Docker:
+- `cd webapp`
+- `docker build -t microservice-webapp:dev .`
+- `docker run -p 8087:80 microservice-webapp:dev`
+- Open `http://localhost:8087`
 
 ## Centralized Config + Live Refresh
 - All services import remote config: `spring.config.import=optional:configserver:http://localhost:8888`.

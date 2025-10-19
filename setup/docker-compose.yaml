@@ -184,3 +184,10 @@ services:
     command: ["-config.file=/etc/tempo/config.yaml"]
     ports:
       - "3200:3200"   # Tempo HTTP API for Grafana datasource
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]

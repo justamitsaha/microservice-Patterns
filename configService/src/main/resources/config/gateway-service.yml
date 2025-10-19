@@ -5,19 +5,22 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
-  kafka:
-    bootstrap-servers: 192.168.0.143:9092,192.168.0.143:9093,192.168.0.143:9094
 
-server:
-  port: 8085
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:192.168.0.143}
+      port: 6379
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,refresh,busrefresh
+  kafka:
+    bootstrap-servers: 192.168.0.143:9092,192.168.0.143:9093,192.168.0.143:9094
+
   tracing:
     sampling:
       probability: 1.0
@@ -28,11 +31,3 @@ management:
 logging:
   level:
     org.springframework.cloud.gateway: INFO
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
-  instance:
-    prefer-ip-address: true
-
