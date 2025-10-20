@@ -5,25 +5,26 @@ import com.saha.amit.customer.dto.CustomerResponse;
 import com.saha.amit.customer.dto.OrderResponse;
 import com.saha.amit.customer.model.CustomerEntity;
 import com.saha.amit.customer.repository.CustomerRepository;
-import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.reactor.bulkhead.operator.BulkheadOperator;
-import io.github.resilience4j.timelimiter.TimeLimiter;
-import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
 import io.github.resilience4j.reactor.retry.RetryOperator;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 @Service
 @RequiredArgsConstructor
@@ -71,22 +72,22 @@ public class CustomerService {
         CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("orderService");
         Retry retry = retryRegistry.retry("orderService");
         Bulkhead bh = bulkheadRegistry.bulkhead("orderService");
-        TimeLimiter tl = timeLimiterRegistry.timeLimiter("orderService");
+
+        Duration timeout = Duration.ofSeconds(2);
 
         Flux<OrderResponse> ordersFlux = orderWebClient.get()
                 .uri(uri -> uri.path("/orders").queryParam("customerId", id).build())
                 .retrieve()
                 .bodyToFlux(OrderResponse.class)
-                .timeout(java.time.Duration.ofSeconds(2))
+                .timeout(timeout) // ✅ Native Reactor timeout replaces TimeLimiterOperator
                 .transformDeferred(CircuitBreakerOperator.of(cb))
                 .transformDeferred(BulkheadOperator.of(bh))
                 .transformDeferred(RetryOperator.of(retry))
+                .onErrorResume(TimeoutException.class,
+                        ex -> Flux.just(new OrderResponse("N/A", id, 0.0, "TIMEOUT")))
                 .onErrorResume(ex -> Flux.just(new OrderResponse("N/A", id, 0.0, "SERVICE_UNAVAILABLE")));
 
-        return customerMono.zipWith(
-                        ordersFlux.collectList()
-                                .transformDeferred(io.github.resilience4j.reactor.timelimiter.operator.TimeLimiterOperator.of(tl))
-                )
+        return customerMono.zipWith(ordersFlux.collectList())
                 .map(tuple -> toResponse(tuple.getT1(), tuple.getT2()))
                 .switchIfEmpty(Mono.empty());
     }
