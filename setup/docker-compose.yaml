@@ -64,7 +64,7 @@ services:
 
   # 📡 OpenTelemetry Collector - Collects traces and metrics from microservices and forwards to Tempo/Prometheus
   otel-collector:
-    image: otel/opentelemetry-collector:0.103.1
+    image: otel/opentelemetry-collector-contrib:0.103.1
     container_name: otel-collector
     restart: unless-stopped
     volumes:

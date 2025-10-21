@@ -17,14 +17,14 @@ exporters:
     tls:
       insecure: true
   jaeger:
-    endpoint: http://jaeger:14268/api/traces   # 👈 add this line
+    endpoint: http://jaeger:14268/api/traces   # ✅ supported in contrib image
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo, jaeger, logging]   # 👈 added "jaeger"
+      exporters: [otlp/tempo, jaeger, logging]
     metrics:
       receivers: [otlp]
       processors: [batch]
