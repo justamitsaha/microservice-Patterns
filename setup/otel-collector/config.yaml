@@ -12,21 +12,23 @@ processors:
 exporters:
   logging:
     verbosity: normal
+
+  # ✅ Tempo exporter (keep existing)
   otlp/tempo:
     endpoint: tempo:4317
     tls:
       insecure: true
-  otlp/jaeger:                # ✅ new exporter using OTLP protocol
-    endpoint: http://jaeger:4318   # 👈 Jaeger’s OTLP HTTP port
-    tls:
-      insecure: true
+
+  # ✅ NEW Zipkin exporter for Jaeger
+  zipkin:
+    endpoint: "http://jaeger:9411/api/v2/spans"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo, otlp/jaeger, logging]
+      exporters: [otlp/tempo, zipkin, logging]   # 👈 added zipkin
     metrics:
       receivers: [otlp]
       processors: [batch]
