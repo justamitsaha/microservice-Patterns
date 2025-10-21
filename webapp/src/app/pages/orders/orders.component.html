@@ -1,0 +1,26 @@
+<div class="container">
+  <h2>Orders</h2>
+  <form (ngSubmit)="create()" style="display:flex; gap:8px; margin-bottom:12px;">
+    <input name="customerId" [(ngModel)]="customerId" placeholder="Customer ID" required>
+    <input name="amount" type="number" step="0.01" min="0.01" [(ngModel)]="amount" placeholder="Amount" required>
+    <button type="submit">Create</button>
+  </form>
+  <div class="row" style="gap:8px;">
+    <input name="filter" [(ngModel)]="filterCustomerId" placeholder="Filter by customerId">
+    <button (click)="load()">Refresh</button>
+  </div>
+  <div *ngIf="error" class="error">{{error}}</div>
+
+  <table>
+    <thead><tr><th>Order ID</th><th>Customer ID</th><th>Amount</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let o of orders">
+        <td>{{o.orderId}}</td>
+        <td>{{o.customerId}}</td>
+        <td>{{o.amount}}</td>
+        <td>{{o.status}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+

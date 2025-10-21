@@ -1,0 +1,22 @@
+<div class="container">
+  <a routerLink="/customers">← Back</a>
+  <h2>Customer Detail</h2>
+  <div *ngIf="error" class="error">{{error}}</div>
+  <div *ngIf="customer as c">
+    <div><b>ID:</b> {{c.id}}</div>
+    <div><b>Name:</b> {{c.name}}</div>
+    <div><b>Email:</b> {{c.email}}</div>
+    <h3>Orders ({{c.orders?.length || 0}})</h3>
+    <table *ngIf="c.orders?.length">
+      <thead><tr><th>Order ID</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let o of c.orders">
+          <td>{{o.orderId}}</td>
+          <td>{{o.amount}}</td>
+          <td>{{o.status}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

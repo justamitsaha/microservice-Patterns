@@ -1,0 +1,22 @@
+<div class="container">
+  <h2>Customers</h2>
+  <form (ngSubmit)="create()" style="display:flex; gap:8px; margin-bottom:12px;">
+    <input name="name" [(ngModel)]="name" placeholder="Name" required>
+    <input name="email" [(ngModel)]="email" placeholder="Email" required>
+    <button type="submit">Create</button>
+  </form>
+  <div *ngIf="error" class="error">{{error}}</div>
+
+  <table>
+    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let c of customers">
+        <td>{{c.id}}</td>
+        <td><a [routerLink]="['/customers', c.id]">{{c.name}}</a></td>
+        <td>{{c.email}}</td>
+        <td><button (click)="delete(c.id!)">Delete</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
