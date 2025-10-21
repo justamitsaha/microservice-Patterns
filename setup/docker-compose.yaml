@@ -106,6 +106,24 @@ services:
       - "14268:14268"   # Collector HTTP
       - "14250:14250"   # Collector gRPC
 
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: tempo
+    restart: unless-stopped
+    volumes:
+      - ./tempo/config.yaml:/etc/tempo/config.yaml:ro
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports:
+      - "3200:3200"   # Tempo HTTP API for Grafana datasource
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+
 #  discovery-service:
 #    build: ../discoveryService
 #    container_name: discovery-service
@@ -174,20 +192,3 @@ services:
 #      - discovery-service
 #      - config-service
 #      - otel-collector
-
-  tempo:
-    image: grafana/tempo:2.6.0
-    container_name: tempo
-    restart: unless-stopped
-    volumes:
-      - ./tempo/config.yaml:/etc/tempo/config.yaml:ro
-    command: ["-config.file=/etc/tempo/config.yaml"]
-    ports:
-      - "3200:3200"   # Tempo HTTP API for Grafana datasource
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--save", "", "--appendonly", "no"]

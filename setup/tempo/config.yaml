@@ -6,7 +6,9 @@ distributor:
     otlp:
       protocols:
         grpc:
+          endpoint: 0.0.0.0:4317
         http:
+          endpoint: 0.0.0.0:4318
 
 ingester:
   trace_idle_period: 10s
@@ -25,10 +27,10 @@ compactor:
   compaction:
     block_retention: 1h
 
+# ✅ Fixed: metrics generator config
 metrics_generator:
   registry:
-    external_labels:
-      source: tempo
+  # external_labels removed — not valid in 2.6.0
   storage:
     path: /tmp/tempo/metrics
     remote_write:
@@ -36,5 +38,7 @@ metrics_generator:
 
 query_frontend:
   search:
-    external_labels:
-      environment: local
+    enable: true  # ✅ explicitly enable search
+
+overrides:
+  max_search_bytes_per_trace: 5000000

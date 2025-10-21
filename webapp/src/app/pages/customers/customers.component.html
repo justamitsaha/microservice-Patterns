@@ -3,7 +3,8 @@
   <form (ngSubmit)="create()" style="display:flex; gap:8px; margin-bottom:12px;">
     <input name="name" [(ngModel)]="name" placeholder="Name" required>
     <input name="email" [(ngModel)]="email" placeholder="Email" required>
-    <button type="submit">Create</button>
+    <input name="password" [(ngModel)]="password" placeholder="Password" type="password" required>
+    <button type="submit">Register</button>
   </form>
   <div *ngIf="error" class="error">{{error}}</div>
 
@@ -19,4 +20,3 @@
     </tbody>
   </table>
 </div>
-

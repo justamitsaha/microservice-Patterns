@@ -15,6 +15,7 @@ export class CustomersComponent implements OnInit {
   customers: Customer[] = [];
   name = '';
   email = '';
+  password = '';
   error = '';
 
   constructor(private api: ApiService) {}
@@ -33,8 +34,9 @@ export class CustomersComponent implements OnInit {
   create() {
     const name = this.name.trim();
     const email = this.email.trim();
-    if (!name || !email) return;
-    this.api.createCustomer({ name, email }).subscribe({
+    const password = this.password.trim();
+    if (!name || !email || !password) return;
+    this.api.createCustomer({ name, email, password } as any).subscribe({
       next: _ => { this.name = ''; this.email = ''; this.load(); },
       error: err => this.error = err.message
     });
@@ -47,4 +49,3 @@ export class CustomersComponent implements OnInit {
     });
   }
 }
-

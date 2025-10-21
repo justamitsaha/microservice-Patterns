@@ -21,6 +21,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -36,6 +39,9 @@ public class CustomerService {
     private final RetryRegistry retryRegistry;
     private final BulkheadRegistry bulkheadRegistry;
     private final TimeLimiterRegistry timeLimiterRegistry;
+    private static final int SALT_BYTES = 16;
+    private static final int ITERATIONS = 65536;
+    private static final int KEY_LENGTH = 256;
 
     public Flux<CustomerEntity> findAll() {
         return repository.findAll();
@@ -50,6 +56,10 @@ public class CustomerService {
         e.setName(req.getName());
         e.setEmail(req.getEmail());
         e.setCreatedAt(Instant.now().toEpochMilli());
+        String salt = generateSalt();
+        String hash = hashPassword(req.getPassword(), salt);
+        e.setPasswordSalt(salt);
+        e.setPasswordHash(hash);
         return repository.save(e);
     }
 
@@ -58,6 +68,12 @@ public class CustomerService {
                 .flatMap(existing -> {
                     existing.setName(req.getName());
                     existing.setEmail(req.getEmail());
+                    if (req.getPassword() != null && !req.getPassword().isBlank()) {
+                        String salt = generateSalt();
+                        String hash = hashPassword(req.getPassword(), salt);
+                        existing.setPasswordSalt(salt);
+                        existing.setPasswordHash(hash);
+                    }
                     return repository.save(existing);
                 });
     }
@@ -94,5 +110,44 @@ public class CustomerService {
 
     public static CustomerResponse toResponse(CustomerEntity e, List<OrderResponse> orders) {
         return new CustomerResponse(e.getId(), e.getName(), e.getEmail(), e.getCreatedAt(), orders);
+    }
+
+    // Password helpers
+    private static String generateSalt() {
+        byte[] salt = new byte[SALT_BYTES];
+        new SecureRandom().nextBytes(salt);
+        return java.util.Base64.getEncoder().encodeToString(salt);
+    }
+
+    private static String hashPassword(String password, String base64Salt) {
+        try {
+            byte[] salt = java.util.Base64.getDecoder().decode(base64Salt);
+            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
+            SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            return java.util.Base64.getEncoder().encodeToString(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Password hashing failed", e);
+        }
+    }
+
+    public reactor.core.publisher.Mono<com.saha.amit.customer.dto.LoginResponse> login(com.saha.amit.customer.dto.LoginRequest request) {
+        return repository.findByEmail(request.getEmail())
+                .map(user -> {
+                    String recomputed = hashPassword(request.getPassword(), user.getPasswordSalt());
+                    boolean ok = constantTimeEquals(user.getPasswordHash(), recomputed);
+                    return new com.saha.amit.customer.dto.LoginResponse(ok, ok ? "Login successful" : "Invalid credentials");
+                })
+                .defaultIfEmpty(new com.saha.amit.customer.dto.LoginResponse(false, "User not found"));
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        if (a.length() != b.length()) return false;
+        int res = 0;
+        for (int i = 0; i < a.length(); i++) {
+            res |= a.charAt(i) ^ b.charAt(i);
+        }
+        return res == 0;
     }
 }
