@@ -19,7 +19,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         outboxService = mock(OutboxService.class);
-        orderService = new OrderService(outboxService);
+        //orderService = new OrderService(outboxService);
     }
 
     @Test
