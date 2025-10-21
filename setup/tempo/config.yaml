@@ -15,6 +15,10 @@ ingester:
   max_block_bytes: 1048576
   max_block_duration: 5m
 
+compactor:
+  compaction:
+    block_retention: 1h
+
 storage:
   trace:
     backend: local
@@ -23,14 +27,7 @@ storage:
     local:
       path: /tmp/tempo/traces
 
-compactor:
-  compaction:
-    block_retention: 1h
-
-# ✅ Fixed: metrics generator config
 metrics_generator:
-  registry:
-  # external_labels removed — not valid in 2.6.0
   storage:
     path: /tmp/tempo/metrics
     remote_write:
@@ -38,7 +35,9 @@ metrics_generator:
 
 query_frontend:
   search:
-    enable: true  # ✅ explicitly enable search
+    enabled: true              # ✅ Correct key name for Tempo 2.6.0
+    max_search_bytes_per_trace: 5000000  # ✅ belongs here, not under overrides
 
-overrides:
-  max_search_bytes_per_trace: 5000000
+querier:
+  frontend_worker:
+    frontend_address: tempo:3200
