@@ -11,18 +11,20 @@ processors:
 
 exporters:
   logging:
-    verbosity: normal   # <-- fixed (was logLevel: info)
+    verbosity: normal
   otlp/tempo:
     endpoint: tempo:4317
     tls:
       insecure: true
+  jaeger:
+    endpoint: http://jaeger:14268/api/traces   # 👈 add this line
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/tempo, logging]
+      exporters: [otlp/tempo, jaeger, logging]   # 👈 added "jaeger"
     metrics:
       receivers: [otlp]
       processors: [batch]
