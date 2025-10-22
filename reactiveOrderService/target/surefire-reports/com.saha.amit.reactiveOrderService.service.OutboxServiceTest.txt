@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.saha.amit.reactiveOrderService.service.OutboxServiceTest
--------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.259 s -- in com.saha.amit.reactiveOrderService.service.OutboxServiceTest
