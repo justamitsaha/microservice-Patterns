@@ -14,14 +14,16 @@ export class LoginComponent {
   password = '';
   message = '';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService) { }
 
   submit() {
     const email = this.email.trim();
     const password = this.password.trim();
     if (!email || !password) return;
     this.api.login(email, password).subscribe({
-      next: res => this.message = res.message,
+      next: (res: any) => {
+        localStorage.setItem('accessToken', res.accessToken);
+      },
       error: err => this.message = err.message
     });
   }

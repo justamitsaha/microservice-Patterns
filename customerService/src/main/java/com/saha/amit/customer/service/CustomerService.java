@@ -1,10 +1,9 @@
 package com.saha.amit.customer.service;
 
-import com.saha.amit.customer.dto.CustomerRequest;
-import com.saha.amit.customer.dto.CustomerResponse;
-import com.saha.amit.customer.dto.OrderResponse;
+import com.saha.amit.customer.dto.*;
 import com.saha.amit.customer.model.CustomerEntity;
 import com.saha.amit.customer.repository.CustomerRepository;
+import com.saha.amit.customer.util.CustomerServiceUtil;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -57,7 +56,7 @@ public class CustomerService {
         e.setEmail(req.getEmail());
         e.setCreatedAt(Instant.now().toEpochMilli());
         String salt = generateSalt();
-        String hash = hashPassword(req.getPassword(), salt);
+        String hash = CustomerServiceUtil.hashPassword(req.getPassword(), salt);
         e.setPasswordSalt(salt);
         e.setPasswordHash(hash);
         return repository.save(e);
@@ -70,7 +69,7 @@ public class CustomerService {
                     existing.setEmail(req.getEmail());
                     if (req.getPassword() != null && !req.getPassword().isBlank()) {
                         String salt = generateSalt();
-                        String hash = hashPassword(req.getPassword(), salt);
+                        String hash = CustomerServiceUtil.hashPassword(req.getPassword(), salt);
                         existing.setPasswordSalt(salt);
                         existing.setPasswordHash(hash);
                     }
@@ -119,35 +118,16 @@ public class CustomerService {
         return java.util.Base64.getEncoder().encodeToString(salt);
     }
 
-    private static String hashPassword(String password, String base64Salt) {
-        try {
-            byte[] salt = java.util.Base64.getDecoder().decode(base64Salt);
-            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
-            SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            byte[] hash = skf.generateSecret(spec).getEncoded();
-            return java.util.Base64.getEncoder().encodeToString(hash);
-        } catch (Exception e) {
-            throw new RuntimeException("Password hashing failed", e);
-        }
-    }
 
-    public reactor.core.publisher.Mono<com.saha.amit.customer.dto.LoginResponse> login(com.saha.amit.customer.dto.LoginRequest request) {
+    public Mono<LoginResponse> login(LoginRequest request) {
         return repository.findByEmail(request.getEmail())
                 .map(user -> {
-                    String recomputed = hashPassword(request.getPassword(), user.getPasswordSalt());
-                    boolean ok = constantTimeEquals(user.getPasswordHash(), recomputed);
-                    return new com.saha.amit.customer.dto.LoginResponse(ok, ok ? "Login successful" : "Invalid credentials");
+                    String recomputed = CustomerServiceUtil.hashPassword(request.getPassword(), user.getPasswordSalt());
+                    boolean ok = CustomerServiceUtil.constantTimeEquals(user.getPasswordHash(), recomputed);
+                    return new LoginResponse(ok, ok ? "Login successful" : "Invalid credentials");
                 })
-                .defaultIfEmpty(new com.saha.amit.customer.dto.LoginResponse(false, "User not found"));
+                .defaultIfEmpty(new LoginResponse(false, "User not found"));
     }
 
-    private static boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) return false;
-        if (a.length() != b.length()) return false;
-        int res = 0;
-        for (int i = 0; i < a.length(); i++) {
-            res |= a.charAt(i) ^ b.charAt(i);
-        }
-        return res == 0;
-    }
+
 }
