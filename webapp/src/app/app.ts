@@ -1,11 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NotificationService } from './services/notification.service';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

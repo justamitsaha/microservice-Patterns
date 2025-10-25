@@ -24,7 +24,7 @@ public class CustomerServiceUtil {
     private static final int KEY_LENGTH = 256;
 
     public CustomerServiceUtil(
-            @Value("${jwt.secret:0CBC458ACABBE3F02EA737C7DF416FA216FBA9B287932C38AB8AC61A69671CE4}") String secret,
+            @Value("${jwt.secret:oycBHAYRCc8fMxKkRVx9FA4EC+pWAgmeRGxQFbLGb5Y=}") String secret,
             @Value("${jwt.access-expiration-ms:900000}") long accessExpirationMs,
             @Value("${jwt.refresh-expiration-ms:604800000}") long refreshExpirationMs) {
         this.secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));

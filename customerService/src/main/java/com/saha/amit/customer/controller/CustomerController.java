@@ -3,7 +3,6 @@ package com.saha.amit.customer.controller;
 import com.saha.amit.customer.dto.CustomerRequest;
 import com.saha.amit.customer.dto.CustomerResponse;
 import com.saha.amit.customer.dto.LoginRequest;
-import com.saha.amit.customer.dto.LoginResponse;
 import com.saha.amit.customer.model.CustomerEntity;
 import com.saha.amit.customer.repository.CustomerRepository;
 import com.saha.amit.customer.service.CustomerService;
@@ -66,27 +65,45 @@ public class CustomerController {
 
     @PostMapping("/login")
     public Mono<ResponseEntity<Map<String, String>>> login(@RequestBody LoginRequest request) {
-        return repository.findByEmail(request.getEmail())
+        String emailAttempt = request.getEmail();
+        log.info("🔐 Login attempt for email: {}", emailAttempt);
+
+        return repository.findByEmail(emailAttempt)
                 .map(user -> {
                     String recomputed = CustomerServiceUtil.hashPassword(request.getPassword(), user.getPasswordSalt());
                     boolean ok = CustomerServiceUtil.constantTimeEquals(user.getPasswordHash(), recomputed);
 
                     if (!ok) {
+                        log.warn("❌ Invalid credentials for email: {}", emailAttempt);
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                 .body(Map.of("message", "Invalid credentials"));
                     }
 
+                    // ✅ Credentials OK → Generate JWT tokens
                     String accessToken = customerServiceUtil.generateAccessToken(user.getId(), user.getEmail());
                     String refreshToken = customerServiceUtil.generateRefreshToken(user.getId(), user.getEmail());
+                    log.info("Access token {}", accessToken);
+                    // Extract claims to log non-sensitive details
+                    try {
+                        Claims accessClaims = customerServiceUtil.validateToken(accessToken);
+                        log.info("✅ Access token issued for userId={} email={} issuedAt={} expiresAt={}",
+                                accessClaims.getSubject(),
+                                accessClaims.get("email", String.class),
+                                accessClaims.getIssuedAt(),
+                                accessClaims.getExpiration());
+                    } catch (Exception e) {
+                        log.error("⚠️ Failed to parse generated access token for email {}: {}", emailAttempt, e.getMessage());
+                    }
 
                     ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                             .httpOnly(true)
                             .secure(true)
-                            .path("/customers/refresh") // cookie sent only to refresh endpoint
+                            .path("/customers/refresh")
                             .sameSite("Strict")
                             .maxAge(Duration.ofDays(7))
                             .build();
 
+                    log.info("💾 Refresh token cookie set for userId={} (HttpOnly, 7 days validity)", user.getId());
                     return ResponseEntity.ok()
                             .header(HttpHeaders.SET_COOKIE, cookie.toString())
                             .body(Map.of(
@@ -94,29 +111,48 @@ public class CustomerController {
                                     "accessToken", accessToken
                             ));
                 })
-                .defaultIfEmpty(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("message", "User not found")));
+                .defaultIfEmpty(
+                        ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                .body(Map.of("message", "User not found"))
+                )
+                .doOnSuccess(resp -> {
+                    if (resp.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                        log.warn("🚫 Login failed for email: {} (User not found or unauthorized)", emailAttempt);
+                    }
+                });
     }
 
 
     @PostMapping("/refresh")
     public Mono<ResponseEntity<Map<String, String>>> refresh(@CookieValue("refreshToken") String refreshToken) {
+        log.info("♻️ Refresh token request received");
+
         try {
             Claims claims = customerServiceUtil.validateToken(refreshToken);
-            if (!"refresh".equals(claims.get("type"))) {
+            String tokenType = (String) claims.get("type");
+
+            if (!"refresh".equals(tokenType)) {
+                log.warn("❌ Invalid token type received: {}", tokenType);
                 return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "Invalid token type")));
             }
 
             String userId = claims.getSubject();
-            String email = (String) claims.get("email");
+            String email = claims.get("email", String.class);
+            log.info("✅ Valid refresh token for userId={} email={} expiresAt={}", userId, email, claims.getExpiration());
 
             String newAccess = customerServiceUtil.generateAccessToken(userId, email);
+            Claims newAccessClaims = customerServiceUtil.validateToken(newAccess);
+
+            log.info("🎟️ New access token generated for userId={} expiresAt={}",
+                    newAccessClaims.getSubject(), newAccessClaims.getExpiration());
+
             return Mono.just(ResponseEntity.ok(Map.of(
                     "accessToken", newAccess,
                     "message", "Token refreshed"
             )));
         } catch (Exception e) {
+            log.error("❌ Refresh token validation failed: {}", e.getMessage());
             return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid or expired refresh token")));
         }

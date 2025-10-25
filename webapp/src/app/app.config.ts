@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { jwtInterceptor } from './services/interceptor';
 import { apiInterceptor } from './interceptors/api.interceptor';
@@ -12,6 +12,6 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes),
     provideClientHydration(withEventReplay()),
-    provideHttpClient(withInterceptors([jwtInterceptor, apiInterceptor])),
+    provideHttpClient(withInterceptors([jwtInterceptor, apiInterceptor]), withFetch()),
   ]
 };
