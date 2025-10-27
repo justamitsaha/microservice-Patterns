@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 
 @Repository
-public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, String>, OrderRepositoryCustom {
+public interface OrderRepository extends ReactiveCrudRepository<OrderEntity, String> {
     Flux<OrderEntity> findByCustomerId(String customerId);
 }

@@ -11,8 +11,9 @@ public class ReactiveOrderServiceApplication {
     private final static Logger logger = LoggerFactory.getLogger(ReactiveOrderServiceApplication.class);
     public static void main(String[] args) {
         String swagger_UI = "http://localhost:8080/swagger-ui/index.html";
-        SpringApplication.run(ReactiveOrderServiceApplication.class, args);
+        logger.info("http://localhost:8080/actuator/health");
         logger.info("Swagger UI, {} ", swagger_UI);
+        SpringApplication.run(ReactiveOrderServiceApplication.class, args);
     }
 
 }

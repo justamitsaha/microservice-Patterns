@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Repository
-public interface OrderOutboxRepository extends ReactiveCrudRepository<OrderOutboxEntity, UUID>, OrderOutboxRepositoryCustom {
+public interface OrderOutboxRepository extends ReactiveCrudRepository<OrderOutboxEntity, UUID> {
 
     @Query("""
             SELECT * FROM order_outbox

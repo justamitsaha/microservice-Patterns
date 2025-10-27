@@ -12,6 +12,7 @@ public class DiscoveryServiceApplication {
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryServiceApplication.class);
     public static void main(String[] args) {
         logger.info("http://localhost:8761/");
+        logger.info("http://localhost:8761/actuator/health/");
         SpringApplication.run(DiscoveryServiceApplication.class, args);
     }
 }

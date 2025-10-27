@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saha.amit.reactiveOrderService.model.OrderEntity;
 import com.saha.amit.reactiveOrderService.model.OrderOutboxEntity;
+import com.saha.amit.reactiveOrderService.repository.CustomOrderRepositoryImpl;
 import com.saha.amit.reactiveOrderService.repository.OrderOutboxRepository;
 import com.saha.amit.reactiveOrderService.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ class OutboxServiceTest {
     private OrderOutboxRepository orderOutboxRepository;
     private TransactionalOperator transactionalOperator;
     private OutboxService outboxService;
+    private CustomOrderRepositoryImpl customOrderRepository;
 
     @BeforeEach
     void setUp() {
@@ -34,7 +36,7 @@ class OutboxServiceTest {
         transactionalOperator = mock(TransactionalOperator.class);
         ObjectMapper objectMapper = new ObjectMapper();
 
-        outboxService = new OutboxService(orderRepository, orderOutboxRepository, transactionalOperator, objectMapper);
+        outboxService = new OutboxService(orderRepository, orderOutboxRepository, transactionalOperator, objectMapper,customOrderRepository);
 
         when(transactionalOperator.transactional(any(Mono.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -73,7 +75,7 @@ class OutboxServiceTest {
     @Test
     void persistOrderHandlesSerializationFailure() throws JsonProcessingException {
         ObjectMapper failingMapper = mock(ObjectMapper.class);
-        outboxService = new OutboxService(orderRepository, orderOutboxRepository, transactionalOperator, failingMapper);
+        outboxService = new OutboxService(orderRepository, orderOutboxRepository, transactionalOperator, failingMapper,customOrderRepository);
         when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderRepository.insert(any(OrderEntity.class))).thenReturn(Mono.just(new OrderEntity()));
         when(failingMapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("boom") {});

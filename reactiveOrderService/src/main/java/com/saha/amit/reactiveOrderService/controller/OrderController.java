@@ -6,6 +6,8 @@ import com.saha.amit.reactiveOrderService.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,15 +22,21 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
+@RefreshScope
 public class OrderController {
 
     Logger logger = LoggerFactory.getLogger(OrderController.class);
 
     private final OrderService orderService;
 
+    @Value("${order.discount:5}")
+    private String discountPercentage;
+
     @PostMapping
     public ResponseEntity<Mono<OrderResponse>> placeOrder(@RequestBody OrderRequest req) {
         logger.info("Received order placement request: {}", req);
+        req.setAmount(req.getAmount() - (req.getAmount() * Integer.parseInt(discountPercentage) / 100));
+        logger.info("Applied discount of {}%, new amount: {}", discountPercentage, req.getAmount());
         // Simulate order processing and response
         return ResponseEntity.ok(
                 orderService.placeOrder(req.getCustomerId(), req.getAmount())

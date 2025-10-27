@@ -13,7 +13,7 @@ import java.util.UUID;
 public class OrderOutboxEntity {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column("aggregate_id")
     private String aggregateId;
@@ -38,7 +38,7 @@ public class OrderOutboxEntity {
 
     public static OrderOutboxEntity pending(String aggregateId, String eventType, String payload) {
         OrderOutboxEntity entity = new OrderOutboxEntity();
-        entity.setId(UUID.randomUUID());
+        entity.setId(UUID.randomUUID().toString());
         entity.setAggregateId(aggregateId);
         entity.setEventType(eventType);
         entity.setPayload(payload);

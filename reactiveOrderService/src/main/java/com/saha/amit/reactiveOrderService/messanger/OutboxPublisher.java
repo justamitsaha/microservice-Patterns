@@ -11,6 +11,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,6 +23,7 @@ import java.time.Instant;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@RefreshScope
 public class OutboxPublisher {
 
     private final OrderOutboxRepository outboxRepository;
@@ -39,6 +41,9 @@ public class OutboxPublisher {
     private int maxAttempts;
 
     private Disposable subscription;
+
+    @Value("${order.use-protobuf:false}")
+    private boolean useProtobuf;
 
     @PostConstruct
     public void start() {
@@ -60,7 +65,7 @@ public class OutboxPublisher {
     private Mono<Void> publishOutboxRecord(OrderOutboxEntity entity) {
         return Mono.defer(() -> {
             OrderEvent event = deserialize(entity);
-            return orderEventPublisher.publish(event)
+            return orderEventPublisher.publish(event, useProtobuf)
                     .then(updateStatus(entity, OutboxStatus.PUBLISHED, null))
                     .doOnSuccess(ignored -> meterRegistry.counter("order.outbox.published").increment())
                     .doOnError(ex -> meterRegistry.counter("order.outbox.failed").increment())

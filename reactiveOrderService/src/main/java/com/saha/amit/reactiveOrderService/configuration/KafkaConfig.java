@@ -52,6 +52,10 @@ public class KafkaConfig {
 
     // ---------- JSON CONFIG ----------
 
+    /**
+     * Creates a reactive Kafka sender for sending {@link OrderEvent} messages serialized as JSON.
+     * @return a configured {@link KafkaSender} instance with String keys and JSON-serialized {@link OrderEvent} values
+     */
     @Bean("jsonKafkaSender")
     public KafkaSender<String, OrderEvent> jsonKafkaSender() {
         SenderOptions<String, OrderEvent> senderOptions =
@@ -61,6 +65,11 @@ public class KafkaConfig {
         return KafkaSender.create(senderOptions);
     }
 
+    /**
+     * Creates a reactive Kafka receiver for consuming {@link OrderEvent} messages serialized as JSON.
+     * The receiver subscribes to the configured {@code orderTopic}.
+     * @return a configured {@link KafkaReceiver} instance for consuming JSON-encoded {@link OrderEvent} messages
+     */
     @Bean("jsonKafkaReceiver")
     public KafkaReceiver<String, OrderEvent> jsonKafkaReceiver() {
         ReceiverOptions<String, OrderEvent> receiverOptions =
@@ -73,6 +82,11 @@ public class KafkaConfig {
         return KafkaReceiver.create(receiverOptions);
     }
 
+    /**
+     * Creates a reactive Kafka receiver for consuming retry messages from the retry topic.
+     * This receiver uses a dedicated consumer group ID (order-service-retry).
+     * @return a configured {@link KafkaReceiver} for consuming retry {@link OrderEvent} messages
+     */
     @Bean("retryKafkaReceiver")
     public KafkaReceiver<String, OrderEvent> retryKafkaReceiver() {
         String retryGroup = DEFAULT_GROUP_ID + "-retry";
@@ -86,6 +100,10 @@ public class KafkaConfig {
         return KafkaReceiver.create(receiverOptions);
     }
 
+    /**
+     * Creates a reactive Kafka sender for publishing messages as raw byte arrays.
+     * @return a configured {@link KafkaSender} with String keys and byte array values
+     */
     @Bean("byteKafkaSender")
     public KafkaSender<String, byte[]> byteKafkaSender() {
         SenderOptions<String, byte[]> senderOptions =
@@ -97,6 +115,12 @@ public class KafkaConfig {
 
     // ---------- PROTOBUF CONFIG ----------
 
+
+    /**
+     * Creates a reactive Kafka sender for sending {@link OrderEventMessage} messages serialized using Protobuf.
+     * Configures the Confluent Schema Registry to manage message schemas.
+     * @return a configured {@link KafkaSender} with String keys and Protobuf-serialized {@link OrderEventMessage} values
+     */
     @Bean("protobufKafkaSender")
     public KafkaSender<String, OrderEventMessage> protobufKafkaSender() {
         Map<String, Object> props = new HashMap<>(commonProducerProps());
@@ -107,6 +131,11 @@ public class KafkaConfig {
         return KafkaSender.create(SenderOptions.<String, OrderEventMessage>create(props));
     }
 
+    /**
+     * Creates a reactive Kafka receiver for consuming {@link OrderEventMessage} messages serialized using Protobuf.
+     * Configures the Confluent Schema Registry for deserialization.
+     * @return a configured {@link KafkaReceiver} for consuming Protobuf {@link OrderEventMessage} messages
+     */
     @Bean("protobufKafkaReceiver")
     public KafkaReceiver<String, OrderEventMessage> protobufKafkaReceiver() {
         Map<String, Object> props = new HashMap<>(commonConsumerProps(DEFAULT_GROUP_ID + "-proto"));
@@ -118,6 +147,11 @@ public class KafkaConfig {
                 .subscription(List.of(orderProtoTopic)));
     }
 
+
+    /**
+     * Builds a common set of Kafka producer properties shared across all producer configurations.
+     * @return a map of producer configuration properties
+     */
     private Map<String, Object> commonProducerProps() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Objects.requireNonNull(env.getProperty("spring.kafka.bootstrap-servers")));
@@ -131,6 +165,11 @@ public class KafkaConfig {
         return props;
     }
 
+    /**
+     * Builds a common set of Kafka consumer properties shared across all consumer configurations.
+     * @param overrideGroupId an optional consumer group ID to override the default; if {@code null}, the default group ID is used
+     * @return a map of consumer configuration properties
+     */
     private Map<String, Object> commonConsumerProps(String overrideGroupId) {
         String baseGroup = env.getProperty("spring.kafka.consumer.group-id", DEFAULT_GROUP_ID);
         String resolvedGroup = overrideGroupId != null ? overrideGroupId : baseGroup;
@@ -144,6 +183,13 @@ public class KafkaConfig {
         return props;
     }
 
+    /**
+     * Serializes an {@link OrderEvent} object into a JSON byte array.
+     * @param event the {@link OrderEvent} instance to serialize
+     * @param errorMessage a supplier providing an error message if serialization fails
+     * @return a JSON-encoded byte array representing the {@link OrderEvent}
+     * @throws IllegalStateException if serialization fails
+     */
     private byte[] serializeEvent(OrderEvent event, Supplier<String> errorMessage) {
         try {
             return objectMapper.writeValueAsBytes(event);
@@ -152,6 +198,13 @@ public class KafkaConfig {
         }
     }
 
+    /**
+     * Deserializes a JSON byte array into an {@link OrderEvent} instance.
+     * @param payload the JSON byte array
+     * @param errorMessage a supplier providing an error message if deserialization fails
+     * @return the deserialized {@link OrderEvent} object
+     * @throws IllegalStateException if deserialization fails
+     */
     private OrderEvent deserializeEvent(byte[] payload, Supplier<String> errorMessage) {
         try {
             return objectMapper.readValue(payload, OrderEvent.class);
