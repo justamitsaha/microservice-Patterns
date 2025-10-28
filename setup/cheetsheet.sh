@@ -51,4 +51,4 @@ curl -i -X OPTIONS http://localhost:8085/customers   -H "Origin: http://localhos
 curl -i -X GET  http://localhost:8085/customers   -H "Origin: http://localhost:4200"
 curl -i -X GET  http://localhost:8081/customers   -H "Origin: http://localhost:4200"
 
-curl -X POST http://localhost:8888/actuator/busrefresh
+curl -X POST http://localhost:8080/actuator/busrefresh
