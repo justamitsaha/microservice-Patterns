@@ -1,4 +1,4 @@
-package com.saha.amit.customer.dto;
+package com.saha.amit.customerMvc.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,6 +12,6 @@ public class CustomerResponse {
     private String name;
     private String email;
     private Long createdAt;
-    private List<OrderResponse> orders; // maybe null for non-aggregated responses
+    private List<OrderResponse> orders;
 }
 

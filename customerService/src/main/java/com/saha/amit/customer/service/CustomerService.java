@@ -82,7 +82,6 @@ public class CustomerService {
     }
 
     public Mono<CustomerResponse> getWithOrders(String id) {
-        Mono<CustomerEntity> customerMono = repository.findById(id);
 
         CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker("orderService");
         Retry retry = retryRegistry.retry("orderService");
@@ -90,24 +89,31 @@ public class CustomerService {
 
         Duration timeout = Duration.ofSeconds(2);
 
+        Mono<CustomerEntity> customerMono = repository.findById(id);
+
         Flux<OrderResponse> ordersFlux = orderWebClient.get()
                 .uri(uri -> uri.path("/orders").queryParam("customerId", id).build())
                 .retrieve()
                 .bodyToFlux(OrderResponse.class)
-                .timeout(timeout) // ✅ Native Reactor timeout replaces TimeLimiterOperator
-                .transformDeferred(CircuitBreakerOperator.of(cb))
-                .transformDeferred(BulkheadOperator.of(bh))
-                .transformDeferred(RetryOperator.of(retry))
-                .onErrorResume(TimeoutException.class,
-                        ex -> Flux.just(new OrderResponse("N/A", id, 0.0, "TIMEOUT")))
-                .onErrorResume(ex -> Flux.just(new OrderResponse("N/A", id, 0.0, "SERVICE_UNAVAILABLE")));
+                .timeout(timeout)
+                .transformDeferred(RetryOperator.of(retry))            // ✅ Retry first
+                .transformDeferred(CircuitBreakerOperator.of(cb))     // ✅ Then CB
+                .transformDeferred(BulkheadOperator.of(bh))           // ✅ Then BH
+                .onErrorResume(this::fallbackOrders);                 // ✅ Central fallback
 
-        return customerMono.zipWith(ordersFlux.collectList())
-                .map(tuple -> toResponse(tuple.getT1(), tuple.getT2()))
-                .switchIfEmpty(Mono.empty());
+        return customerMono
+                .zipWith(ordersFlux.collectList(), this::toResponse);
     }
 
-    public static CustomerResponse toResponse(CustomerEntity e, List<OrderResponse> orders) {
+    private Flux<OrderResponse> fallbackOrders(Throwable ex) {
+        if (ex instanceof TimeoutException) {
+            return Flux.just(new OrderResponse("N/A", null, 0.0, "TIMEOUT_FALLBACK"));
+        }
+        return Flux.empty(); // Graceful degradation
+    }
+
+
+    public CustomerResponse toResponse(CustomerEntity e, List<OrderResponse> orders) {
         return new CustomerResponse(e.getId(), e.getName(), e.getEmail(), e.getCreatedAt(), orders);
     }
 

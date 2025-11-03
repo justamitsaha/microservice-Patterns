@@ -1,0 +1,23 @@
+resilience4j:
+  circuitbreaker:
+    instances:
+      orderService:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 4
+        minimumNumberOfCalls: 4
+        failureRateThreshold: 50
+        waitDurationInOpenState: 100ms
+        permittedNumberOfCallsInHalfOpenState: 1
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.util.concurrent.TimeoutException
+
+  retry:
+    instances:
+      orderService:
+        maxAttempts: 1  # ✅ disable retry for these tests
+
+  bulkhead:
+    instances:
+      orderService:
+        maxConcurrentCalls: 10

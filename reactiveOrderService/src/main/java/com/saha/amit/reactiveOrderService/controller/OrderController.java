@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
@@ -51,9 +53,10 @@ public class OrderController {
 
     @GetMapping
     public ResponseEntity<Flux<OrderResponse>> getOrders(@RequestParam(value = "customerId", required = false) String customerId) {
-        Flux<OrderResponse> body = (customerId == null || customerId.isBlank()
-                ? orderService.getAllOrders()
-                : orderService.getOrdersByCustomer(customerId))
+        logger.info("Received order retrieval request for customerId: {}", customerId);
+        Flux<OrderResponse> body = orderService.getOrdersByCustomer(customerId)
+                .delayElements(Duration.ofSeconds(5))
+                .doOnNext(e -> logger.info("Order retrieved: {}", e))
                 .map(e -> new OrderResponse(e.getOrderId(), e.getCustomerId(), e.getAmount(), e.getStatus()));
 
         return ResponseEntity.ok(body);
