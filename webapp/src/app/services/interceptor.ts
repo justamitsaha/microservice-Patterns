@@ -1,6 +1,7 @@
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { ConfigService } from '../services/config.service';
 import { catchError, switchMap, throwError, BehaviorSubject, filter, take } from 'rxjs';
 
 const refreshSubject = new BehaviorSubject<string | null>(null);
@@ -9,8 +10,12 @@ let isRefreshing = false;
 export const jwtInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: HttpHandlerFn) => {
   const token = localStorage.getItem('accessToken');
   const http = inject(HttpClient);
+  const config = inject(ConfigService);
 
-  // Skip auth for login and refresh endpoints
+  // Build refresh URL from config
+  const refreshUrl = `${config.apiBaseUrl}/customers/refresh`;
+
+  // Skip auth for login & refresh endpoints
   if (req.url.includes('/login') || req.url.includes('/refresh')) {
     return next(req);
   }
@@ -24,16 +29,14 @@ export const jwtInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: H
         if (!isRefreshing) {
           isRefreshing = true;
           refreshSubject.next(null);
-          return http.post<{ accessToken: string }>(
-            'http://localhost:8085/customers/refresh',
-            {},
-            { withCredentials: true }
-          ).pipe(
+
+          return http.post<{ accessToken: string }>(refreshUrl, {}, { withCredentials: true }).pipe(
             switchMap(res => {
               isRefreshing = false;
               const newToken = res.accessToken;
               localStorage.setItem('accessToken', newToken);
               refreshSubject.next(newToken);
+
               const retryReq = cloned.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } });
               return next(retryReq);
             }),
@@ -47,7 +50,9 @@ export const jwtInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: H
           return refreshSubject.pipe(
             filter(t => t !== null),
             take(1),
-            switchMap(t => next(cloned.clone({ setHeaders: { Authorization: `Bearer ${t}` } })))
+            switchMap(t =>
+              next(cloned.clone({ setHeaders: { Authorization: `Bearer ${t}` } }))
+            )
           );
         }
       }
