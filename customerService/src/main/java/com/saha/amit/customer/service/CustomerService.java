@@ -109,7 +109,7 @@ public class CustomerService {
         if (ex instanceof TimeoutException) {
             return Flux.just(new OrderResponse("N/A", null, 0.0, "TIMEOUT_FALLBACK"));
         }
-        return Flux.empty(); // Graceful degradation
+        return Flux.just(new OrderResponse("N/A", null, 0.0, "SERVICE_UNAVAILABLE"));
     }
 
 

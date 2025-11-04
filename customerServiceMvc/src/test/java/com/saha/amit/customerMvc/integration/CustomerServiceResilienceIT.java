@@ -54,10 +54,14 @@ class CustomerServiceResilienceIT {
         mockServer.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
 
         String baseUrl = mockServer.url("/").toString();
-        Optional<com.saha.amit.customerMvc.dto.CustomerResponse> resp = service.getWithOrders("c1", baseUrl);
+        Object result = service.getWithOrders("c1", baseUrl);
+        @SuppressWarnings("unchecked")
+        Optional<com.saha.amit.customerMvc.dto.CustomerResponse> resp = (result instanceof java.util.concurrent.CompletableFuture)
+                ? ((java.util.concurrent.CompletableFuture<Optional<com.saha.amit.customerMvc.dto.CustomerResponse>>) result).join()
+                : (Optional<com.saha.amit.customerMvc.dto.CustomerResponse>) result;
 
         assertThat(resp).isPresent();
-        var r = resp.get();
+        var r = resp.orElseThrow();
         assertThat(r.getOrders()).hasSize(1);
         assertThat(r.getOrders().get(0).getStatus()).isEqualTo("SERVICE_UNAVAILABLE");
 
@@ -66,4 +70,3 @@ class CustomerServiceResilienceIT {
                 .doesNotThrowAnyException();
     }
 }
-

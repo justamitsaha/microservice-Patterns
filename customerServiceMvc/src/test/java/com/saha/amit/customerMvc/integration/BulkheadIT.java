@@ -12,8 +12,8 @@ import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -38,7 +38,7 @@ class BulkheadIT {
     @Autowired
     BulkheadRegistry bulkheadRegistry;
 
-    @MockitoBean
+    @MockBean
     CustomerRepository repository;
 
     static MockWebServer server;
@@ -80,12 +80,15 @@ class BulkheadIT {
         int availableDuringFirst = bh.getMetrics().getAvailableConcurrentCalls();
 
         // Second call should be rejected immediately due to maxConcurrentCalls=1 and maxWaitDuration=0ms
-        var second = service.getWithOrders("c1", base);
+        Object result = service.getWithOrders("c1", base);
+        @SuppressWarnings("unchecked")
+        java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse> second = (result instanceof java.util.concurrent.CompletableFuture)
+                ? ((java.util.concurrent.CompletableFuture<java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse>>) result).join()
+                : (java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse>) result;
 
         assertThat(availableDuringFirst).isEqualTo(0);
         assertThat(second).isPresent();
-        assertThat(second.get().getOrders()).hasSize(1);
-        assertThat(second.get().getOrders().get(0).getStatus()).isEqualTo("SERVICE_UNAVAILABLE");
+        assertThat(second.orElseThrow().getOrders()).hasSize(1);
+        assertThat(second.orElseThrow().getOrders().get(0).getStatus()).isEqualTo("SERVICE_UNAVAILABLE");
     }
 }
-

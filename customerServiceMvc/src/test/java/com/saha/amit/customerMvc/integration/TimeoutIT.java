@@ -51,14 +51,17 @@ class TimeoutIT {
 
         String base = server.url("/").toString();
         long start = System.nanoTime();
-        var resp = service.getWithOrders("c1", base);
+        Object result = service.getWithOrders("c1", base);
+        @SuppressWarnings("unchecked")
+        java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse> resp = (result instanceof java.util.concurrent.CompletableFuture)
+                ? ((java.util.concurrent.CompletableFuture<java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse>>) result).join()
+                : (java.util.Optional<com.saha.amit.customerMvc.dto.CustomerResponse>) result;
         long elapsedMs = Duration.ofNanos(System.nanoTime() - start).toMillis();
 
         assertThat(resp).isPresent();
-        assertThat(resp.get().getOrders()).hasSize(1);
-        assertThat(resp.get().getOrders().get(0).getStatus()).isEqualTo("SERVICE_UNAVAILABLE");
+        assertThat(resp.orElseThrow().getOrders()).hasSize(1);
+        assertThat(resp.orElseThrow().getOrders().get(0).getStatus()).isEqualTo("SERVICE_UNAVAILABLE");
         // Ensure timeout/fallback returned promptly (< 3s)
         assertThat(elapsedMs).isLessThan(3000);
     }
 }
-
