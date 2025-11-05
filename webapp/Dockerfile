@@ -15,14 +15,13 @@ COPY . .
 # Build Angular for production
 RUN npm run build --prod
 
-
 # ---------------------------
 # Step 2: Run with Nginx
 # ---------------------------
 FROM nginx:1.25-alpine
 
-# Copy built Angular dist to Nginx HTML folder
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy only browser output to Nginx root
+COPY --from=build /app/dist/webapp/browser /usr/share/nginx/html
 
 # Copy env template
 COPY docker/env.template.js /usr/share/nginx/html/assets/env.template.js
