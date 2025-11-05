@@ -25,13 +25,11 @@ FROM nginx:1.25-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy env template
-COPY src/assets/env.template.js /usr/share/nginx/html/assets/env.template.js
+COPY docker/env.template.js /usr/share/nginx/html/assets/env.template.js
 
 # Copy entrypoint script
-COPY src/docker/docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Document that container listens on port 80
 EXPOSE 80
-
 ENTRYPOINT ["/docker-entrypoint.sh"]
