@@ -1,27 +1,19 @@
-# ---------------------------
-# Step 1: Build Angular App
-# ---------------------------
 FROM node:20-alpine AS build
-
 WORKDIR /app
 
-# Install dependencies first (better caching)
 COPY package*.json ./
 RUN npm install
 
-# Copy all source code
 COPY . .
-
-# Build Angular for production
 RUN npm run build --prod
 
-# ---------------------------
-# Step 2: Run with Nginx
-# ---------------------------
 FROM nginx:1.25-alpine
 
-# Copy only browser output to Nginx root
+# Copy browser build
 COPY --from=build /app/dist/webapp/browser /usr/share/nginx/html
+
+# Copy custom nginx config
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy env template
 COPY docker/env.template.js /usr/share/nginx/html/assets/env.template.js
