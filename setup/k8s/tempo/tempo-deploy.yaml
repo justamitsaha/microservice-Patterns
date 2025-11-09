@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+  namespace: observability
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: tempo } }
+  template:
+    metadata:
+      labels: { app: tempo }
+    spec:
+      containers:
+        - name: tempo
+          image: grafana/tempo:2.6.0
+          args: ["-config.file=/etc/tempo/tempo.yaml"]
+          ports:
+            - containerPort: 3200
+          volumeMounts:
+            - { name: cfg,  mountPath: /etc/tempo }
+            - { name: data, mountPath: /var/tempo }
+      volumes:
+        - name: cfg
+          configMap:
+            name: tempo-config
+            items:
+              - key: tempo.yaml
+                path: tempo.yaml
+        - name: data
+          persistentVolumeClaim:
+            claimName: tempo-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+  namespace: observability
+spec:
+  type: ClusterIP
+  selector: { app: tempo }
+  ports:
+    - name: http
+      port: 3200
+      targetPort: 3200

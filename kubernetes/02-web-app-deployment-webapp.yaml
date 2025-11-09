@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-deployment
+  namespace: apps
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp
+          image: justamitsaha/new-ms-webapp:v1
+          ports:
+            - containerPort: 80
+          env:
+            - name: API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: webapp-config
+                  key: API_BASE_URL
+            - name: APP_THEME_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: webapp-config
+                  key: APP_THEME_COLOR

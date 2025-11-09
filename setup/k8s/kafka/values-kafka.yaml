@@ -1,0 +1,29 @@
+replicaCount: 3
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: standard-rwo
+
+zookeeper:
+  enabled: false
+  # We'll point Kafka to the separate ZK release
+externalZookeeper:
+  servers:
+    - zookeeper.observability.svc.cluster.local
+
+listeners:
+  client:
+    name: CLIENT
+    port: 9092
+  controller:
+    name: CONTROLLER
+    port: 9093
+advertisedListeners:
+  - name: CLIENT
+    port: 9092
+    address: kafka-0.kafka-headless.observability.svc.cluster.local
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi

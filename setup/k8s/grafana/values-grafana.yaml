@@ -1,0 +1,31 @@
+adminUser: admin
+adminPassword: admin
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClassName: standard-rwo
+
+service:
+  type: LoadBalancer
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.observability.svc.cluster.local
+        isDefault: true
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.observability.svc.cluster.local:3200
+
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /
