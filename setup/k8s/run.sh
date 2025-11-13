@@ -17,6 +17,12 @@ helm upgrade --install zookeeper bitnami/zookeeper \
 helm upgrade --install kafka bitnami/kafka \
   -n observability -f setup/k8s/kafka/values-kafka.yaml
 
+helm upgrade --install kafka bitnami/kafka \
+  -n observability \
+  --version 26.5.6 \
+  -f setup/k8s/kafka/values-kafka.yaml
+
+
 # 4) Tempo
 kubectl apply -f setup/k8s/tempo/tempo-pvc.yaml
 kubectl apply -f setup/k8s/tempo/tempo-config.yaml
@@ -77,3 +83,6 @@ Port-forward for local testing:
 kubectl -n observability port-forward svc/schema-registry 8081:8081
 # test:
 curl http://localhost:8081/subjects
+
+#for restarts sample
+kubectl -n observability rollout restart deploy/schema-registry

@@ -43,7 +43,9 @@ ENV JAVA_OPTS="\
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
 # Build
-#docker build -t justamitsaha/config-service:v1 .
+#docker build -t justamitsaha/new-ms-config-service:v1 .
 
 # Run (local test)
-#docker run -p 8888:8888 justamitsaha/config-service:v1
+#docker run -d -p 8888:8888 justamitsaha/new-ms-config-service:v1
+
+#docker push justamitsaha/new-ms-config-service:v1
