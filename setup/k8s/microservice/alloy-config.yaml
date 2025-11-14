@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+data:
+  alloy.alloy: |
+    loki.source.kubernetes_logs "pods" {}
+    loki.write "loki" {
+      endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
+    }
+
+    otelcol.receiver.otlp "default" {
+      grpc {}
+      http {}
+    }
+
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.observability.svc.cluster.local:4317"
+        insecure = true
+      }
+    }
+
+    otelcol.processor.batch "default" {}
+
+    otelcol.service "traces" {
+      pipelines = [
+        {
+          receivers  = [otelcol.receiver.otlp.default]
+          processors = [otelcol.processor.batch.default]
+          exporters  = [otelcol.exporter.otlp.tempo]
+        },
+      ]
+    }
+

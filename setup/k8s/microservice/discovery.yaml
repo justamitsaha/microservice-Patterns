@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery
+  labels:
+    app: discovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery
+  template:
+    metadata:
+      labels:
+        app: discovery
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8761"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: app
+          image: $IMAGE_REPO/new-ms-discovery-service:$IMAGE_VERSION
+          ports:
+            - containerPort: 8761
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: gcp
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "prometheus,health,info"
+            - name: SERVER_PORT
+              value: "8761"
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: http://configservice.microservice.svc.cluster.local:8888
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://localhost:4318
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_SERVICE_NAME
+              value: discovery
+        - name: alloy
+          image: grafana/alloy:latest
+          args: ["run", "/etc/alloy/alloy.alloy"]
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: otlp-grpc
+              containerPort: 4317
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: alloy-config
+        - name: varlog
+          hostPath:
+            path: /var/log
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery
+  labels:
+    app: discovery
+spec:
+  selector:
+    app: discovery
+  ports:
+    - name: http
+      port: 8761
+      targetPort: http
+  type: ClusterIP
