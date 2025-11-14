@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: your-app-namespace
+data:
+  alloy.alloy: |
+    loki.source.kubernetes_logs "pods" {}
+    loki.write "loki" {
+      endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
+    }
+
+    otelcol.receiver.otlp "default" {
+      grpc {}
+      http {}
+    }
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.observability.svc.cluster.local:4317"
+        insecure = true
+      }
+    }
+    otelcol.processor.batch "default" {}
+    otelcol.processor.resource "k8s" {
+      attributes = {
+        - action = "insert"
+          key    = "k8s.namespace"
+          value  = "${K8S_NAMESPACE}"
+      }
+    }
+    otelcol.connector.otlp "pipeline" {}
+
+    otelcol.service "traces" {
+      pipelines = [
+        {
+          receivers  = [otelcol.receiver.otlp.default]
+          processors = [otelcol.processor.batch.default, otelcol.processor.resource.k8s]
+          exporters  = [otelcol.exporter.otlp.tempo]
+        },
+      ]
+    }
+---
+# Example sidecar to include in your Spring Boot Deployment (in your app namespace)
+# - Mounts host logs to allow Alloy to read container logs
+# - Receives OTLP traces from the app at localhost:4317 and forwards to Tempo
+# - For metrics, prefer Prometheus scraping via annotations on the app container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-app
+  namespace: your-app-namespace
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/actuator/prometheus"
+spec:
+  containers:
+    - name: app
+      image: your/spring-boot:latest
+      ports:
+        - containerPort: 8080
+      env:
+        - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+          value: http://localhost:4318
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_SERVICE_NAME
+          value: your-service
+    - name: alloy
+      image: grafana/alloy:latest
+      args: ["run", "/etc/alloy/alloy.alloy"]
+      ports:
+        - name: otlp-http
+          containerPort: 4318
+        - name: otlp-grpc
+          containerPort: 4317
+      volumeMounts:
+        - name: alloy-config
+          mountPath: /etc/alloy
+        - name: varlog
+          mountPath: /var/log
+  volumes:
+    - name: alloy-config
+      configMap:
+        name: alloy-config
+    - name: varlog
+      hostPath:
+        path: /var/log
+        type: Directory
+
