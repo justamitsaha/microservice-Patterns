@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservice-app-settings
+  namespace: microservice
+data:
+  SPRING_CONFIG_IMPORT: "optional:configserver:http://configservice.microservice.svc.cluster.local:8888"
+  SPRING_ACTIVE_PROFILE: "gcp"
+  EUREKA_DEFAULT_ZONE: "http://discovery.microservice.svc.cluster.local:8761/eureka"
+  EUREKA_PREFER_IP: "true"
+  SPRING_CLOUD_STREAM_KAFKA_BROKERS: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  SPRING_CLOUD_BUS_TOPIC: "config-bus-topic"
+  SPRING_CLOUD_BUS_ENABLED: "true"
+  SPRING_CLOUD_BUS_REFRESH_ENABLED: "true"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql.microservice.svc.cluster.local:3306/amit?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  SPRING_DATASOURCE_USERNAME: "appuser"
+  SPRING_DATASOURCE_PASSWORD: "appPass123"
+  SPRING_R2DBC_URL: "r2dbc:mysql://mysql.microservice.svc.cluster.local:3306/amit"
+  SPRING_R2DBC_USERNAME: "appuser"
+  SPRING_R2DBC_PASSWORD: "appPass123"
+  SPRING_KAFKA_BOOTSTRAP: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  SCHEMA_REGISTRY_URL: "http://schema-registry.kafka.svc.cluster.local:8081"
+  OTLP_ENDPOINT: "http://localhost:4318/v1/traces"
+  ORDER_SERVICE_BASE_URL: "http://order-service"
+  MANAGEMENT_ENDPOINTS: "health,info,metrics,prometheus,refresh,busrefresh"
+  TRACING_SAMPLING: "1.0"
+  LOG_PATTERN: "%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%class.%M:%L) - %msg%n"
+  LOG_LEVEL_ROOT: "INFO"
+  LOG_LEVEL_SPRING_BOOT: "INFO"
+  LOG_LEVEL_SPRING_CLOUD: "WARN"
+  LOG_LEVEL_KAFKA: "WARN"
+  LOG_LEVEL_SI: "WARN"
+  LOG_LEVEL_OTEL: "ERROR"

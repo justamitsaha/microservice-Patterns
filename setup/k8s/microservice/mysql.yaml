@@ -7,7 +7,7 @@ stringData:
   mysql-root-password: rootPass123
   mysql-user: appuser
   mysql-password: appPass123
-  mysql-database: shop
+  mysql-database: amit
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -56,9 +56,14 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
       volumes:
         - name: data
           emptyDir: {}
+        - name: init-scripts
+          configMap:
+            name: mysql-initdb
 ---
 apiVersion: v1
 kind: Service
@@ -74,4 +79,3 @@ spec:
       port: 3306
       targetPort: mysql
   type: ClusterIP
-

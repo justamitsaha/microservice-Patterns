@@ -24,25 +24,23 @@ spec:
           ports:
             - containerPort: 8888
               name: http
+          envFrom:
+            - configMapRef:
+                name: microservice-app-settings
+            - configMapRef:
+                name: app-config
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: gcp
-            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "prometheus,health,info"
+            - name: SPRING_APP_NAME
+              value: config-service
             - name: SERVER_PORT
               value: "8888"
-            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: http://localhost:4318
-            - name: OTEL_TRACES_EXPORTER
-              value: otlp
+            - name: SPRING_ACTIVE_PROFILE
+              value: gcp
             - name: OTEL_SERVICE_NAME
               value: configservice
           volumeMounts:
             - name: config-volume
               mountPath: /workspace/config
-          envFrom:
-            - configMapRef:
-                name: app-config
         - name: alloy
           image: grafana/alloy:latest
           args: ["run", "/etc/alloy/alloy.alloy"]

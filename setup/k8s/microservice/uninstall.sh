@@ -15,6 +15,8 @@ done
 echo "Deleting ConfigMaps..."
 kubectl -n "${NS}" delete configmap app-config --ignore-not-found || true
 kubectl -n "${NS}" delete configmap alloy-config --ignore-not-found || true
+kubectl -n "${NS}" delete configmap microservice-app-settings --ignore-not-found || true
+kubectl -n "${NS}" delete configmap mysql-initdb --ignore-not-found || true
 
 echo "Optionally delete namespace ${NS} (y/N)?"
 read -r ans
@@ -23,4 +25,3 @@ if [[ "${ans}" =~ ^[Yy]$ ]]; then
 fi
 
 echo "Done."
-

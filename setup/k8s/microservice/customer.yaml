@@ -15,26 +15,25 @@ spec:
         app: customerservice
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8081"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: app
           image: $IMAGE_REPO/new-ms-customer-service:$IMAGE_VERSION
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
               name: http
+          envFrom:
+            - configMapRef:
+                name: microservice-app-settings
           env:
-            - name: SPRING_PROFILES_ACTIVE
+            - name: SPRING_APP_NAME
+              value: customer-service
+            - name: SERVER_PORT
+              value: "8081"
+            - name: SPRING_ACTIVE_PROFILE
               value: gcp
-            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "prometheus,health,info"
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: http://configservice.microservice.svc.cluster.local:8888
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: http://discovery.microservice.svc.cluster.local:8761/eureka/
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:mysql://mysql.microservice.svc.cluster.local:3306/shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -45,10 +44,16 @@ spec:
                 secretKeyRef:
                   name: mysql-secret
                   key: mysql-password
-            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-              value: http://localhost:4318
-            - name: OTEL_TRACES_EXPORTER
-              value: otlp
+            - name: SPRING_R2DBC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-user
+            - name: SPRING_R2DBC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-password
             - name: OTEL_SERVICE_NAME
               value: customerservice
         - name: alloy
@@ -84,6 +89,6 @@ spec:
     app: customerservice
   ports:
     - name: http
-      port: 8080
+      port: 8081
       targetPort: http
   type: ClusterIP

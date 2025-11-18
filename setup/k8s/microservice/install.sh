@@ -18,6 +18,12 @@ else
   echo "Warning: ${CFG_DIR} not found. Skipping app-config ConfigMap."
 fi
 
+echo "Applying shared app settings ConfigMap..."
+kubectl apply -f "${SCRIPT_DIR}/configmap-app-settings.yaml"
+
+echo "Applying MySQL init scripts ConfigMap..."
+kubectl apply -f "${SCRIPT_DIR}/mysql-initdb-configmap.yaml"
+
 echo "Creating/updating Alloy sidecar ConfigMap..."
 envsubst < "${SCRIPT_DIR}/alloy-config.yaml" | kubectl -n "${NS}" apply -f -
 

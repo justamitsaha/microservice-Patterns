@@ -23,7 +23,7 @@ spec:
               service:
                 name: customerservice
                 port:
-                  number: 8080
+                  number: 8081
           - path: /api/order
             pathType: Prefix
             backend:
@@ -37,7 +37,7 @@ spec:
               service:
                 name: gateway
                 port:
-                  number: 8080
+                  number: 8085
           - path: /eureka
             pathType: Prefix
             backend:
@@ -52,4 +52,3 @@ spec:
                 name: configservice
                 port:
                   number: 8888
-
