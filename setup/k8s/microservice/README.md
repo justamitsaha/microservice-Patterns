@@ -17,11 +17,70 @@ Prerequisites
 - Observability namespace is installed (Tempo/Loki/Prometheus/Grafana).
 - NGINX Ingress controller is running (your setup-gke.sh installs it).
 
-Install
-- Set an image repo/tag (defaults: `IMAGE_REPO=justamitsaha`, `IMAGE_VERSION=v1`). Then run:
-  - `IMAGE_REPO=gcr.io/<project>/microservices IMAGE_VERSION=v1 bash setup/k8s/microservice/install.sh`
-  - or `IMAGE_REPO=<dockerhub-user> IMAGE_VERSION=v2 bash setup/k8s/microservice/install.sh`
-- The script applies `configmap-app-settings.yaml` (shared env defaults) followed by Config Server files and Deployments.
+Install (step-by-step)
+1. From the repo root, build & push all images (optional if already pushed):
+   ```bash
+   REPO=<dockerhub-user> VERSION=v1 bash build-and-push.sh
+   ```
+2. Ensure you are still at repo root and run the installer (sets up ConfigMaps, MySQL, Deployments, Ingress):
+   ```bash
+   IMAGE_REPO=<dockerhub-user> IMAGE_VERSION=v1 bash setup/k8s/microservice/install.sh
+   ```
+3. Confirm the required ConfigMaps exist (especially `app-config` produced from `configService/src/main/resources/config`):
+   ```bash
+   kubectl get configmap -n microservice
+   ```
+4. Watch pods come up:
+   ```bash
+   kubectl get pods -n microservice -w
+   ```
+5. Verify ingress/service endpoints:
+   ```bash
+   kubectl get ingress -n microservice
+   kubectl get svc -n microservice
+   ```
+6. If you update any config files under `configService/src/main/resources/config`, rerun step 2 so `app-config` is recreated.
+
+Manual setup (skip install.sh)
+Run these commands from repo root in order:
+1. Create namespace (if missing):
+   ```bash
+   kubectl create namespace microservice 2>/dev/null || true
+   ```
+2. Shared ConfigMaps:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/configmap-app-settings.yaml
+   kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
+   kubectl -n microservice create configmap app-config \
+     --from-file=configService/src/main/resources/config/gcp \
+     --dry-run=client -o yaml | kubectl apply -f -
+   kubectl -n microservice create configmap alloy-config \
+     --from-file=setup/k8s/microservice/alloy-config.yaml \
+     --dry-run=client -o yaml | kubectl apply -f -
+
+   bash kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml     
+   ```
+
+3. Database:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/mysql.yaml -n microservice
+   ```
+4. Services (set IMAGE_REPO/IMAGE_VERSION first):
+   ```bash
+   export IMAGE_REPO=justamitsaha
+   export IMAGE_VERSION=v1
+   envsubst < setup/k8s/microservice/configservice.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/discovery.yaml    | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/gateway.yaml      | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/customer.yaml     | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/reactive-order.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/webapp.yaml       | kubectl apply -n microservice -f -
+   ```
+5. Ingress:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/ingress.yaml -n microservice
+   ```
+6. Watch pods and verify like in steps 4–5 above.
 
 Uninstall
 - Run: `bash setup/k8s/microservice/uninstall.sh`
