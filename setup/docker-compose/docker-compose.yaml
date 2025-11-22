@@ -20,7 +20,7 @@ services:
     ports:
       - "9092:9092"
     volumes:
-      - ./config/kafka1.properties:/etc/kafka/server.properties
+      - ./kafka-config/kafka1.properties:/etc/kafka/server.properties
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
   # 🦜 Kafka Broker 2 - Second broker to ensure replication and high availability
@@ -32,7 +32,7 @@ services:
     ports:
       - "9093:9093"
     volumes:
-      - ./config/kafka2.properties:/etc/kafka/server.properties
+      - ./kafka-config/kafka2.properties:/etc/kafka/server.properties
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
   # 🦜 Kafka Broker 3 - Third broker completing the Kafka cluster quorum
@@ -44,7 +44,7 @@ services:
     ports:
       - "9094:9094"
     volumes:
-      - ./config/kafka3.properties:/etc/kafka/server.properties
+      - ./kafka-config/kafka3.properties:/etc/kafka/server.properties
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
   # 📜 Schema Registry - Stores and validates Avro/JSON schemas for Kafka message compatibility

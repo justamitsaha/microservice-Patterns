@@ -43,11 +43,17 @@ Install (step-by-step)
 
 Manual setup (skip install.sh)
 Run these commands from repo root in order:
-1. Create namespace (if missing):
+1. Create namespace (if missing) allow network traffic and create topic:
    ```bash
    kubectl create namespace microservice 2>/dev/null || true
+
    ```
-2. Shared ConfigMaps:
+2. Miscellaneous: Allow network policy and topic creation
+   ```bash
+   kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml
+   kubectl apply -f setup/k8s/microservice/config-bus-topic.yaml
+   ```
+3. Shared ConfigMaps:
    ```bash
    kubectl apply -f setup/k8s/microservice/configmap-app-settings.yaml
    kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
@@ -56,16 +62,14 @@ Run these commands from repo root in order:
      --dry-run=client -o yaml | kubectl apply -f -
    kubectl -n microservice create configmap alloy-config \
      --from-file=setup/k8s/microservice/alloy-config.yaml \
-     --dry-run=client -o yaml | kubectl apply -f -
-
-   bash kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml     
+     --dry-run=client -o yaml | kubectl apply -f -   
    ```
 
-3. Database:
+4. Database:
    ```bash
    kubectl apply -f setup/k8s/microservice/mysql.yaml -n microservice
    ```
-4. Services (set IMAGE_REPO/IMAGE_VERSION first):
+5. Services (set IMAGE_REPO/IMAGE_VERSION first):
    ```bash
    export IMAGE_REPO=justamitsaha
    export IMAGE_VERSION=v1
@@ -76,11 +80,11 @@ Run these commands from repo root in order:
    envsubst < setup/k8s/microservice/reactive-order.yaml | kubectl apply -n microservice -f -
    envsubst < setup/k8s/microservice/webapp.yaml       | kubectl apply -n microservice -f -
    ```
-5. Ingress:
+6. Ingress:
    ```bash
    kubectl apply -f setup/k8s/microservice/ingress.yaml -n microservice
    ```
-6. Watch pods and verify like in steps 4–5 above.
+7. Watch pods and verify like in steps 4–5 above.
 
 Uninstall
 - Run: `bash setup/k8s/microservice/uninstall.sh`

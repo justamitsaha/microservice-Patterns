@@ -1,8 +1,15 @@
 
 gcloud container clusters delete amit-cluster --zone us-central1-a
-bash .\setup\k8s\setup-gke.sh 
-bash .\setup\k8s\kafka\install-kafka.sh
-bash .\setup\k8s\observability\install.sh 
+bash ./setup/k8s/setup-gke.sh 
+#verify
+kubectl get svc -A | grep LoadBalancer
+kubectl get pods -A | grep ingress
+kubectl get svc -n ingress-nginx
+kubectl get ingressclass
+k get nodes -o wide
+
+bash ./setup/k8s/kafka/install-kafka.sh
+bash ./setup/k8s/observability/install.sh 
 kubectl delete namespace <> --wait
 
 
@@ -23,17 +30,11 @@ kubectl logs deployment/configservice -n microservice
 kubectl describe pod configservice-567d66cdfd-jc5t6 -n microservice
 kubectl get pod configservice-567d66cdfd-jc5t6 -n microservice -o wide
 
-#if pod startarting ten getting error like CrashLoopBackOff
+#if pod starting ten getting error like CrashLoopBackOff
 kubectl logs deployment/configservice -n microservice
 
 
 
 #check config map
 kubectl get configmap -n microservice
-
-
-kubectl get svc -A | grep LoadBalancer
-kubectl get pods -A | grep ingress
-kubectl get svc -n ingress-nginx
-kubectl get ingressclass
 
