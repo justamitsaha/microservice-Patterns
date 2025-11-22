@@ -10,7 +10,9 @@ import org.springframework.cloud.config.server.EnableConfigServer;
 @SpringBootApplication
 public class ConfigServiceApplication {
     public static final Logger logger = LoggerFactory.getLogger(ConfigServiceApplication.class);
+
     public static void main(String[] args) {
+        logger.info("Config Service started at port 8888");
         logger.info("http://localhost:8888/actuator/health");
         logger.info("http://localhost:8888/order-service/dev");
         logger.info("http://localhost:8888/customer-service/default/main");
@@ -20,4 +22,3 @@ public class ConfigServiceApplication {
         SpringApplication.run(ConfigServiceApplication.class, args);
     }
 }
-
