@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: microservice
+data:
+  SPRING_APP_NAME: "customer-service"
+  SERVER_PORT: "8081"
+
+  # Database
+  SPRING_R2DBC_URL: "r2dbc:mysql://mysql.microservice.svc.cluster.local:3306/amit?serverTimezone=Asia/Kolkata"
+  SPRING_R2DBC_USERNAME: "appuser"
+  SPRING_R2DBC_PASSWORD: "appPass123"
+
+  # External calls
+  ORDER_SERVICE_BASE_URL: "http://order-service"
+
+  # Observability
+  HTTP_SERVER_REQ_PERCENTILES: "0.5,0.9,0.95,0.99"
+  HTTP_SERVER_REQ_SLO: "100ms,250ms,500ms,1s,2s"
+
+  # Swagger
+  SWAGGER_UI_PATH: "/swagger-ui/index.html"

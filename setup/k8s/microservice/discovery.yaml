@@ -41,8 +41,11 @@ spec:
             - name: OTEL_SERVICE_NAME
               value: discovery
         - name: alloy
-          image: grafana/alloy:latest
+          image: grafana/alloy:main
           args: ["run", "/etc/alloy/alloy.alloy"]
+          env:
+            - name: ALLOY_ENABLE_FEATURES
+              value: flow
           ports:
             - name: otlp-http
               containerPort: 4318

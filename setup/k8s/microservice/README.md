@@ -63,14 +63,12 @@ Run these commands from repo root in order:
    kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
    ```
    ```bash
-    kubectl -n microservice create configmap app-config \
+   kubectl -n microservice create configmap app-config \
     --from-file=setup/k8s/microservice/config \
     --dry-run=client -o yaml | kubectl apply -f -
    ```
    ```bash
-   kubectl -n microservice create configmap alloy-config \
-    --from-file=alloy.alloy=setup/k8s/microservice/alloy-config.yaml \
-    --dry-run=client -o yaml | kubectl apply -f -
+   kubectl apply -f setup/k8s/microservice/alloy-config.yaml -n microservice
    ``` 
 
 4. Database:

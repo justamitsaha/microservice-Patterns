@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: microservice
+data:
+  SPRING_APP_NAME: "order-service"
+
+  # Database
+  SPRING_R2DBC_URL: "r2dbc:mysql://mysql.microservice.svc.cluster.local:3306/amit?serverTimezone=Asia/Kolkata"
+  SPRING_R2DBC_USERNAME: "appuser"
+  SPRING_R2DBC_PASSWORD: "appPass123"
+
+  # Kafka topics
+  APP_KAFKA_TOPIC_ORDER: "order.events"
+  APP_KAFKA_TOPIC_ORDER_DLT: "order.events.dlt"
+  APP_KAFKA_TOPIC_ORDER_RETRY: "order.events.retry"
+  APP_KAFKA_TOPIC_ORDER_PROTO: "order.events.proto"
+
+  # Schema Registry
+  SCHEMA_REGISTRY_URL: "http://schema-registry.kafka.svc.cluster.local:8081"
+
+  # Custom values
+  ORDER_DISCOUNT: "5"
+  ORDER_USE_PROTOBUF: "false"

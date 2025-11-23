@@ -38,39 +38,14 @@ spec:
               value: config-service
             - name: SERVER_PORT
               value: "8888"
-            - name: SPRING_ACTIVE_PROFILE
-              value: gcp
             - name: OTEL_SERVICE_NAME
               value: configservice
-
-        # -----------------------
-        # ALLOY SIDECAR
-        # -----------------------
-        - name: alloy
-          image: grafana/alloy:latest
-          args: ["run", "/etc/alloy/alloy.alloy"]
-          ports:
-            - name: otlp-http
-              containerPort: 4318
-            - name: otlp-grpc
-              containerPort: 4317
-          volumeMounts:
-            - name: alloy-config
-              mountPath: /etc/alloy
-            - name: varlog
-              mountPath: /var/log
 
       volumes:
         - name: alloy-config
           configMap:
             name: alloy-config
-        - name: varlog
-          hostPath:
-            path: /var/log
-            type: Directory
-
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -86,3 +61,4 @@ spec:
       port: 8888
       targetPort: http
   type: ClusterIP
+
