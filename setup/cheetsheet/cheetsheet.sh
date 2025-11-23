@@ -20,9 +20,11 @@ docker exec --interactive --tty kafka1  kafka-topics --bootstrap-server kafka1:1
 docker exec --interactive --tty kafka1  kafka-topics --bootstrap-server kafka1:19092 --describe --topic smsEvent
 
 #consumer
-docker exec -it kafka1 kafka-console-consumer   --bootstrap-server kafka1:19092   --topic order.events   --from-beginning   --property print.key=true   --property print.value=true   --property print.headers=true
+docker exec -it kafka1 kafka-console-consumer   --bootstrap-server kafka1:19092   --topic order.events  \
+ --from-beginning   --property print.key=true   --property print.value=true   --property print.headers=true
 
-docker exec -it kafka1 kafka-console-consumer   --bootstrap-server kafka1:19092   --topic order.events.proto   --from-beginning   --property print.key=true   --property print.value=true   --property print.headers=true
+docker exec -it kafka1 kafka-console-consumer   --bootstrap-server kafka1:19092   --topic order.events.proto \
+  --from-beginning   --property print.key=true   --property print.value=true   --property print.headers=true
 
 #producer
 docker exec -it kafka1 kafka-console-producer \

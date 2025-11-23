@@ -51,19 +51,27 @@ Run these commands from repo root in order:
 2. Miscellaneous: Allow network policy and topic creation
    ```bash
    kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml
+   ```
+    ```bash
    kubectl apply -f setup/k8s/microservice/config-bus-topic.yaml
    ```
 3. Shared ConfigMaps:
    ```bash
    kubectl apply -f setup/k8s/microservice/configmap-app-settings.yaml
-   kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
-   kubectl -n microservice create configmap app-config \
-     --from-file=configService/src/main/resources/config/gcp \
-     --dry-run=client -o yaml | kubectl apply -f -
-   kubectl -n microservice create configmap alloy-config \
-     --from-file=setup/k8s/microservice/alloy-config.yaml \
-     --dry-run=client -o yaml | kubectl apply -f -   
    ```
+   ```bash
+   kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
+   ```
+   ```bash
+    kubectl -n microservice create configmap app-config \
+    --from-file=setup/k8s/microservice/config \
+    --dry-run=client -o yaml | kubectl apply -f -
+   ```
+   ```bash
+   kubectl -n microservice create configmap alloy-config \
+    --from-file=alloy.alloy=setup/k8s/microservice/alloy-config.yaml \
+    --dry-run=client -o yaml | kubectl apply -f -
+   ``` 
 
 4. Database:
    ```bash

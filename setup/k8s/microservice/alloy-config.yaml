@@ -2,9 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: alloy-config
+  namespace: microservice
 data:
   alloy.alloy: |
     loki.source.kubernetes_logs "pods" {}
+
     loki.write "loki" {
       endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
     }
@@ -26,10 +28,9 @@ data:
     otelcol.service "traces" {
       pipelines = [
         {
-          receivers  = [otelcol.receiver.otlp.default]
-          processors = [otelcol.processor.batch.default]
-          exporters  = [otelcol.exporter.otlp.tempo]
+          receivers  = [otelcol.receiver.otlp.default],
+          processors = [otelcol.processor.batch.default],
+          exporters  = [otelcol.exporter.otlp.tempo],
         },
       ]
     }
-

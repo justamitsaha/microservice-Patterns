@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: configservice
+  namespace: microservice
   labels:
     app: configservice
 spec:
@@ -19,8 +20,11 @@ spec:
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
+        # -----------------------
+        # CONFIG SERVICE CONTAINER
+        # -----------------------
         - name: app
-          image: $IMAGE_REPO/new-ms-config-service:$IMAGE_VERSION
+          image: ${IMAGE_REPO}/new-ms-config-service:${IMAGE_VERSION}
           ports:
             - containerPort: 8888
               name: http
@@ -28,7 +32,7 @@ spec:
             - configMapRef:
                 name: microservice-app-settings
             - configMapRef:
-                name: app-config
+                name: app-config  # <--- ONLY env override, NOT mounted
           env:
             - name: SPRING_APP_NAME
               value: config-service
@@ -38,9 +42,10 @@ spec:
               value: gcp
             - name: OTEL_SERVICE_NAME
               value: configservice
-          volumeMounts:
-            - name: config-volume
-              mountPath: /workspace/config
+
+        # -----------------------
+        # ALLOY SIDECAR
+        # -----------------------
         - name: alloy
           image: grafana/alloy:latest
           args: ["run", "/etc/alloy/alloy.alloy"]
@@ -54,10 +59,8 @@ spec:
               mountPath: /etc/alloy
             - name: varlog
               mountPath: /var/log
+
       volumes:
-        - name: config-volume
-          configMap:
-            name: app-config
         - name: alloy-config
           configMap:
             name: alloy-config
@@ -65,11 +68,14 @@ spec:
           hostPath:
             path: /var/log
             type: Directory
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: configservice
+  namespace: microservice
   labels:
     app: configservice
 spec:
