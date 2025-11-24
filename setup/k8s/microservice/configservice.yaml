@@ -20,31 +20,44 @@ spec:
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
-        # -----------------------
-        # CONFIG SERVICE CONTAINER
-        # -----------------------
         - name: app
           image: ${IMAGE_REPO}/new-ms-config-service:${IMAGE_VERSION}
           ports:
             - containerPort: 8888
               name: http
+
+          # --------------------------
+          # 1️⃣ Load common config
+          # --------------------------
           envFrom:
             - configMapRef:
                 name: microservice-app-settings
+            # --------------------------
+            # 2️⃣ Load config-service-specific values
+            # --------------------------
             - configMapRef:
-                name: app-config  # <--- ONLY env override, NOT mounted
+                name: configservice-config
+
+          # --------------------------
+          # 3️⃣ Service-specific pod-level env
+          # --------------------------
           env:
-            - name: SPRING_APP_NAME
-              value: config-service
-            - name: SERVER_PORT
-              value: "8888"
             - name: OTEL_SERVICE_NAME
               value: configservice
-
+        # -----------------------
+        # ALLOY SIDECAR
+        # -----------------------
+        - name: alloy
+          image: grafana/alloy:latest
+          args: ["run", "/etc/alloy/alloy.alloy"]
+          mountPath: /etc/alloy
+            - name: varlog
+            mountPath: /var/log
       volumes:
         - name: alloy-config
           configMap:
             name: alloy-config
+
 ---
 apiVersion: v1
 kind: Service
@@ -61,4 +74,3 @@ spec:
       port: 8888
       targetPort: http
   type: ClusterIP
-

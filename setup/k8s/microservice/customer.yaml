@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: customerservice
+  namespace: microservice
   labels:
     app: customerservice
 spec:
@@ -20,42 +21,45 @@ spec:
     spec:
       containers:
         - name: app
-          image: $IMAGE_REPO/new-ms-customer-service:$IMAGE_VERSION
+          image: ${IMAGE_REPO}/new-ms-customer-service:${IMAGE_VERSION}
           ports:
             - containerPort: 8081
               name: http
+
+          # -------------------------------------
+          # Load common configuration
+          # -------------------------------------
           envFrom:
             - configMapRef:
                 name: microservice-app-settings
+
+            # -------------------------------------
+            # Load service-specific configuration
+            # -------------------------------------
+            - configMapRef:
+                name: customer-service-config
+
           env:
-            - name: SPRING_APP_NAME
-              value: customer-service
-            - name: SERVER_PORT
-              value: "8081"
-            - name: SPRING_ACTIVE_PROFILE
-              value: gcp
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: mysql-user
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mysql-secret
-                  key: mysql-password
+            # Only values that **must come from secrets** stay here
             - name: SPRING_R2DBC_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
                   key: mysql-user
+
             - name: SPRING_R2DBC_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: mysql-secret
                   key: mysql-password
+
+            # Pod identity for traces
             - name: OTEL_SERVICE_NAME
               value: customerservice
+
+        # -------------------------------------
+        # Alloy Sidecar
+        # -------------------------------------
         - name: alloy
           image: grafana/alloy:main
           args: ["run", "/etc/alloy/alloy.alloy"]
@@ -72,6 +76,7 @@ spec:
               mountPath: /etc/alloy
             - name: varlog
               mountPath: /var/log
+
       volumes:
         - name: alloy-config
           configMap:
@@ -80,18 +85,10 @@ spec:
           hostPath:
             path: /var/log
             type: Directory
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: customerservice
-  labels:
-    app: customerservice
-spec:
-  selector:
-    app: customerservice
-  ports:
-    - name: http
-      port: 8081
-      targetPort: http
-  type: ClusterIP
+  namespace: microservic

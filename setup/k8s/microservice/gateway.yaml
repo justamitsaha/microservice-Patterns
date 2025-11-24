@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway
+  namespace: microservice
   labels:
     app: gateway
 spec:
@@ -20,22 +21,32 @@ spec:
     spec:
       containers:
         - name: app
-          image: $IMAGE_REPO/new-ms-gateway-service:$IMAGE_VERSION
+          image: ${IMAGE_REPO}/new-ms-gateway-service:${IMAGE_VERSION}
           ports:
             - containerPort: 8085
               name: http
+
+          # -------------------------------
+          # Load shared config (Kafka, Eureka, Logging, Tracing, Redis defaults)
+          # -------------------------------
           envFrom:
             - configMapRef:
                 name: microservice-app-settings
+
+            # -------------------------------
+            # Load gateway-specific config
+            # -------------------------------
+            - configMapRef:
+                name: gateway-service-config
+
           env:
-            - name: SPRING_APP_NAME
-              value: gateway-service
-            - name: SERVER_PORT
-              value: "8085"
-            - name: SPRING_ACTIVE_PROFILE
-              value: gcp
+            # Pod identity for traces — stays inline
             - name: OTEL_SERVICE_NAME
               value: gateway
+
+        # -------------------------------
+        # Alloy Sidecar
+        # -------------------------------
         - name: alloy
           image: grafana/alloy:main
           args: ["run", "/etc/alloy/alloy.alloy"]
@@ -52,6 +63,7 @@ spec:
               mountPath: /etc/alloy
             - name: varlog
               mountPath: /var/log
+
       volumes:
         - name: alloy-config
           configMap:
@@ -60,11 +72,13 @@ spec:
           hostPath:
             path: /var/log
             type: Directory
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: gateway
+  namespace: microservice
   labels:
     app: gateway
 spec:

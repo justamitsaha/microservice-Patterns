@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: discovery
+  namespace: microservice
   labels:
     app: discovery
 spec:
@@ -20,26 +21,32 @@ spec:
     spec:
       containers:
         - name: app
-          image: $IMAGE_REPO/new-ms-discovery-service:$IMAGE_VERSION
+          image: ${IMAGE_REPO}/new-ms-discovery-service:${IMAGE_VERSION}
           ports:
             - containerPort: 8761
               name: http
+
+          # -------------------------------------
+          # Load common config (Kafka, Eureka base, logging, tracing)
+          # -------------------------------------
           envFrom:
             - configMapRef:
                 name: microservice-app-settings
+
+            # -------------------------------------
+            # Load discovery-specific config
+            # -------------------------------------
+            - configMapRef:
+                name: discovery-service-config
+
           env:
-            - name: SPRING_APP_NAME
-              value: discovery-service
-            - name: SERVER_PORT
-              value: "8761"
-            - name: SPRING_ACTIVE_PROFILE
-              value: gcp
-            - name: SPRING_CLOUD_BUS_ENABLED
-              value: "true"
-            - name: SPRING_CLOUD_BUS_REFRESH_ENABLED
-              value: "true"
+            # Identity used by telemetry (SAFE to hardcode)
             - name: OTEL_SERVICE_NAME
               value: discovery
+
+        # -------------------------------------
+        # Alloy Sidecar
+        # -------------------------------------
         - name: alloy
           image: grafana/alloy:main
           args: ["run", "/etc/alloy/alloy.alloy"]
@@ -54,6 +61,9 @@ spec:
           volumeMounts:
             - name: alloy-config
               mountPath: /etc/alloy
+            - name: varlog
+              mountPath: /var/log
+
       volumes:
         - name: alloy-config
           configMap:
@@ -62,11 +72,13 @@ spec:
           hostPath:
             path: /var/log
             type: Directory
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: discovery
+  namespace: microservice
   labels:
     app: discovery
 spec:
