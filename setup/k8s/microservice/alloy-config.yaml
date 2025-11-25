@@ -5,32 +5,40 @@ metadata:
   namespace: microservice
 data:
   alloy.alloy: |
-    loki.source.kubernetes_logs "pods" {}
+    loki.source.file "containers" {
+      targets = [
+        {
+          __path__ = "/var/log/containers/*.log",
+        },
+      ]
+      forward_to = [loki.write.default.receiver]
+    }
 
-    loki.write "loki" {
-      endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push"
+      }
     }
 
     otelcol.receiver.otlp "default" {
-      grpc {}
-      http {}
+      grpc { endpoint = "0.0.0.0:4317" }
+      http { endpoint = "0.0.0.0:4318" }
+      output {
+        traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    otelcol.processor.batch "default" {
+      output {
+        traces = [otelcol.exporter.otlp.tempo.input]
+      }
     }
 
     otelcol.exporter.otlp "tempo" {
       client {
         endpoint = "tempo.observability.svc.cluster.local:4317"
-        insecure = true
+        tls {
+          insecure = true
+        }
       }
-    }
-
-    otelcol.processor.batch "default" {}
-
-    otelcol.service "traces" {
-      pipelines = [
-        {
-          receivers  = [otelcol.receiver.otlp.default],
-          processors = [otelcol.processor.batch.default],
-          exporters  = [otelcol.exporter.otlp.tempo],
-        },
-      ]
     }

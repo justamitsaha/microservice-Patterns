@@ -24,3 +24,9 @@ RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# docker run -p 8080:80 \
+#   -e API_BASE_URL="http://localhost:9000" \
+#   -e APP_THEME_COLOR="#2196f3" \
+#   my-webapp:local
+

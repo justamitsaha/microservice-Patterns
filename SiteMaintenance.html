@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Developer Toolkit</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: var(--bg);
+            color: var(--text);
+            transition: 0.3s;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --text: #000;
+            --card-bg: #f2f2f2;
+            --border: #ccc;
+            --btn-bg: #007bff;
+            --btn-text: #fff;
+        }
+
+        .dark {
+            --bg: #1e1e1e;
+            --text: #e8e8e8;
+            --card-bg: #2b2b2b;
+            --border: #555;
+            --btn-bg: #4ea1ff;
+            --btn-text: #000;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 300px;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        button {
+            padding: 6px 12px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .url-row, .cmd-row {
+            margin: 6px 0;
+        }
+
+        .cmd {
+            font-family: monospace;
+            background: #00000022;
+            padding: 6px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .toggle-dark {
+            float: right;
+            margin-top: -45px;
+        }
+    </style>
+
+</head>
+<body>
+
+<button class="toggle-dark" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+
+<h1>Developer Toolkit</h1>
+
+<!-- ========================= -->
+<!--  URL GENERATOR SECTION    -->
+<!-- ========================= -->
+<div class="card">
+    <h2>Dynamic URL Generator</h2>
+
+    <p>Enter Hostname / IP (e.g., http://34.12.56.78 or 35.226.236.202):</p>
+
+    <input type="text" id="hostInput" placeholder="http://localhost">
+    <button onclick="generateUrls()">Generate</button>
+
+    <h3>Generated URLs</h3>
+    <div id="generatedLinks"></div>
+</div>
+
+
+<!-- ========================= -->
+<!--  COMMAND SECTION          -->
+<!-- ========================= -->
+<div class="card">
+    <h2>Important Commands</h2>
+
+    <!-- Search Bar -->
+    <input type="text" id="cmdSearch" placeholder="Search commands..." onkeyup="searchCommands()">
+
+    <div id="cmdSections">
+
+        <!-- ========================= -->
+        <!--   SECTION 1: Kubernetes   -->
+        <!-- ========================= -->
+        <div class="cmd-section">
+            <h3>Kubernetes Basics</h3>
+            <p class="section-desc">
+                These commands help check pod, service, and deployment status.
+                Use them during troubleshooting or verifying your cluster.
+            </p>
+
+            <div class="cmd-row">
+                <span class="cmd">kubectl get pods -A</span>
+                <button onclick="copyText('kubectl get pods -A')">Copy</button>
+            </div>
+
+            <div class="cmd-row">
+                <span class="cmd">kubectl get svc -A</span>
+                <button onclick="copyText('kubectl get svc -A')">Copy</button>
+            </div>
+
+            <div class="cmd-row">
+                <span class="cmd">kubectl describe pod POD_NAME -n NAMESPACE</span>
+                <button onclick="copyText('kubectl describe pod POD_NAME -n NAMESPACE')">Copy</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ========================= -->
+        <!--   SECTION 2: Port Forward -->
+        <!-- ========================= -->
+        <div class="cmd-section">
+            <h3>Port Forwarding</h3>
+            <p class="section-desc">
+                Use these commands to access internal cluster services like MySQL and Redis
+                from your local machine.
+            </p>
+
+            <div class="cmd-row">
+                <span class="cmd">kubectl port-forward svc/mysql 3307:3306 -n microservice</span>
+                <button onclick="copyText('kubectl port-forward svc/mysql 3307:3306 -n microservice')">Copy</button>
+            </div>
+
+            <div class="cmd-row">
+                <span class="cmd">kubectl port-forward svc/redis 6380:6379 -n microservice</span>
+                <button onclick="copyText('kubectl port-forward svc/redis 6380:6379 -n microservice')">Copy</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ========================= -->
+        <!--   SECTION 3: Docker       -->
+        <!-- ========================= -->
+        <div class="cmd-section">
+            <h3>Docker Commands</h3>
+            <p class="section-desc">
+                Common Docker commands useful for debugging containers, checking logs,
+                and entering running containers.
+            </p>
+
+            <div class="cmd-row">
+                <span class="cmd">docker logs -f container-name</span>
+                <button onclick="copyText('docker logs -f container-name')">Copy</button>
+            </div>
+
+            <div class="cmd-row">
+                <span class="cmd">docker exec -it container-name sh</span>
+                <button onclick="copyText('docker exec -it container-name sh')">Copy</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+<script>
+    /* ---------------------------
+       DARK MODE (Saved in browser)
+    ----------------------------*/
+    function toggleDarkMode() {
+        document.body.classList.toggle("dark");
+        localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+    }
+
+    if (localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark");
+    }
+
+    /* ---------------------------
+       URL GENERATOR
+    ----------------------------*/
+    function generateUrls() {
+        const host = document.getElementById("hostInput").value.trim();
+        if (!host) return;
+
+        const cleanHost = host.replace(/\/+$/, "");
+
+        const urls = {
+            "Customer Service": `${cleanHost}/api/customer`,
+            "Order Service": `${cleanHost}/api/order`,
+            "Gateway": `${cleanHost}/gateway`,
+            "Eureka Server": `${cleanHost}/eureka`,
+            "Config Server": `${cleanHost}/config`,
+            "Web App": `${cleanHost}/`
+        };
+
+        let html = "";
+        Object.entries(urls).forEach(([name, url]) => {
+            html += `
+                <div class="url-row">
+                    <strong>${name}:</strong>
+                    <a href="${url}" target="_blank">${url}</a>
+                    <button onclick="copyText('${url}')">Copy</button>
+                </div>
+            `;
+        });
+
+        document.getElementById("generatedLinks").innerHTML = html;
+    }
+
+    /* ---------------------------
+       COPY WITHOUT ALERT POPUP
+    ----------------------------*/
+    function copyText(text) {
+        navigator.clipboard.writeText(text);
+    }
+
+    /* ---------------------------
+       COMMAND SEARCH
+    ----------------------------*/
+    function searchCommands() {
+        const query = document.getElementById("cmdSearch").value.toLowerCase();
+        const rows = document.querySelectorAll("#cmdList .cmd-row");
+
+        rows.forEach(row => {
+            const cmd = row.innerText.toLowerCase();
+            row.style.display = cmd.includes(query) ? "" : "none";
+        });
+    }
+</script>
+
+</body>
+</html>

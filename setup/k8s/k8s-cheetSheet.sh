@@ -31,7 +31,7 @@ kubectl describe pod configservice-567d66cdfd-jc5t6 -n microservice
 kubectl get pod configservice-567d66cdfd-jc5t6 -n microservice -o wide
 
 #if pod starting ten getting error like CrashLoopBackOff
-kubectl logs deployment.apps/discovery -n microservice
+kubectl logs service/configservice -n microservice
 
 
 

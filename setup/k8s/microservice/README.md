@@ -56,17 +56,13 @@ Run these commands from repo root in order:
    kubectl apply -f setup/k8s/microservice/config-bus-topic.yaml
    ```
 3. Shared ConfigMaps:
-   ```bash
-   kubectl apply -f setup/k8s/microservice/configmap-app-settings.yaml
-   ```
+   
    ```bash
    kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
    ```
-   ```bash
-   kubectl -n microservice create configmap app-config \
-    --from-file=setup/k8s/microservice/config \
-    --dry-run=client -o yaml | kubectl apply -f -
-   ```
+    ```bash
+   kubectl apply -f setup/k8s/microservice/config-map/ -n microservice
+    ```
    ```bash
    kubectl apply -f setup/k8s/microservice/alloy-config.yaml -n microservice
    ``` 

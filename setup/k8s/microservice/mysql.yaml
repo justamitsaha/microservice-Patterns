@@ -79,3 +79,9 @@ spec:
       port: 3306
       targetPort: mysql
   type: ClusterIP
+
+#  kubectl port-forward svc/mysql 3307:3306 -n microservice
+# mysql -h 127.0.0.1 -P 3307 -u appuser -p
+# use amit
+# show tables
+

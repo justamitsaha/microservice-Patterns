@@ -48,8 +48,8 @@ spec:
         # Alloy Sidecar
         # -------------------------------------
         - name: alloy
-          image: grafana/alloy:main
-          args: ["run", "/etc/alloy/alloy.alloy"]
+          image: grafana/alloy:latest
+          args: ["run", "--stability.level=public-preview", "/etc/alloy/alloy.alloy"]
           env:
             - name: ALLOY_ENABLE_FEATURES
               value: flow
