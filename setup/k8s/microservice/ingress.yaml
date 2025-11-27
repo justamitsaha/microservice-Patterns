@@ -5,48 +5,62 @@ metadata:
   namespace: microservice
   annotations:
     kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /
-            pathType: Prefix
+
+          # ---------- Web App ----------
+          - path: /(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: webapp
                 port:
                   number: 80
-          - path: /api/customer
-            pathType: Prefix
+
+          # ---------- Customer Service ----------
+          - path: /api/customer(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: customerservice
                 port:
                   number: 8081
-          - path: /api/order
-            pathType: Prefix
+
+          # ---------- Order Service ----------
+          - path: /api/order(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: reactiveorderservice
                 port:
                   number: 8080
-          - path: /gateway
-            pathType: Prefix
+
+          # ---------- Gateway ----------
+          - path: /gateway(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: gateway
                 port:
                   number: 8085
-          - path: /eureka
-            pathType: Prefix
+
+          # ---------- Eureka ----------
+          - path: /eureka(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: discovery
                 port:
                   number: 8761
-          - path: /config
-            pathType: Prefix
+
+          # ---------- Config Server ----------
+          - path: /config(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: configservice
