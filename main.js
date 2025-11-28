@@ -56,12 +56,12 @@ const COMMAND_SECTIONS = [
     {
         "title": "Deployments Rollout with Restart with out changing image tag",
         "commands": {
-            "kubectl rollout restart deployment/configservice -n microservice": "Restart Web App deployment",
-            "kubectl rollout restart deployment/discovery -n microservice": "Restart Gateway deployment",
-            "kubectl rollout restart deployment/gateway -n microservice": "Restart Customer MS deployment",
-            "kubectl rollout restart deployment/customerservice -n microservice": "Restart Reactive Order MS deployment",
-            "kubectl rollout restart deployment/reactiveorderservice -n microservice": "Restart Gateway deployment",
-            "kubectl rollout restart deployment/webapp -n microservice": "Restart Customer MS deployment",
+            "kubectl rollout restart deployment/configservice -n microservice": "Restart Config MS deployment",
+            "kubectl rollout restart deployment/discovery -n microservice": "Restart Discovery MS deployment",
+            "kubectl rollout restart deployment/gateway -n microservice": "Restart Gateway MS deployment",
+            "kubectl rollout restart deployment/customerservice -n microservice": "Restart Customer MS deployment",
+            "kubectl rollout restart deployment/reactiveorderservice -n microservice": "Restart Order MS deployment",
+            "kubectl rollout restart deployment/webapp -n microservice": "Restart WEb app deployment",
 
             "kubectl rollout status deployment/configservice -n microservice": "Check rollout status of Config Service deployment",
             "kubectl rollout status deployment/discovery -n microservice": "Check rollout status of Discovery Service deployment",
