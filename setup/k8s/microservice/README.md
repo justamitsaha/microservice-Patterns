@@ -1,98 +1,105 @@
-Microservice Stack on GKE (namespace: microservice)
+# Microservice Stack on GKE (namespace: microservice)
 
-Overview
-- Deploys Spring Boot microservices and a web app:
-  - customerService (Spring Boot)
-  - reactiveOrderService (Spring Boot)
-  - discoveryService (Eureka server)
-  - gatewayService (API gateway)
-  - configService (Spring Cloud Config Server)
-  - webapp (frontend)
-- Adds MySQL (single instance) for customerService and reactiveOrderService
-- Adds Alloy sidecar to each Spring Boot Pod to forward traces/logs to your observability stack (Tempo/Loki)
-- Exposes services via NGINX Ingress with simple path routing
+## Overview
+Deploys Spring Boot microservices and a web app:
+- **customerService** (Spring Boot)
+- **reactiveOrderService** (Spring Boot)
+- **discoveryService** (Eureka server)
+- **gatewayService** (API gateway)
+- **configService** (Spring Cloud Config Server)
+- **webapp** (frontend)
 
-Prerequisites
-- Build and push container images for each app to a registry you can pull from GKE.
-- Observability namespace is installed (Tempo/Loki/Prometheus/Grafana).
-- NGINX Ingress controller is running (your setup-gke.sh installs it).
+Additional components:
+- MySQL (single instance) for customerService and reactiveOrderService
+- Alloy sidecar in each Spring Boot Pod to forward traces/logs to your observability stack (Tempo/Loki)
+- NGINX Ingress for external access with path-based routing
 
-Install (step-by-step)
-1. From the repo root, build & push all images (optional if already pushed):
+## Prerequisites
+- Build and push container images for each app to a registry accessible from GKE
+- Observability namespace installed (Tempo/Loki/Prometheus/Grafana)
+- NGINX Ingress controller running (installed via `setup-gke.sh`)
+
+## Install (step-by-step)
+
+1. **Build & push all images** (skip if already pushed):
    ```bash
    REPO=<dockerhub-user> VERSION=v1 bash build-and-push.sh
    ```
-2. Ensure you are still at repo root and run the installer (sets up ConfigMaps, MySQL, Deployments, Ingress):
+
+2. **Run the installer** from repo root (sets up ConfigMaps, MySQL, Deployments, Ingress):
    ```bash
    IMAGE_REPO=<dockerhub-user> IMAGE_VERSION=v1 bash setup/k8s/microservice/install.sh
    ```
-3. Confirm the required ConfigMaps exist (especially `app-config` produced from `configService/src/main/resources/config`):
+
+3. **Verify ConfigMaps** (especially `app-config` from `configService/src/main/resources/config`):
    ```bash
    kubectl get configmap -n microservice
    ```
-4. Watch pods come up:
+
+4. **Watch pods start**:
    ```bash
    kubectl get pods -n microservice -w
    ```
-5. Verify ingress/service endpoints:
+
+5. **Verify ingress and services**:
    ```bash
    kubectl get ingress -n microservice
    kubectl get svc -n microservice
    ```
-6. If you update any config files under `configService/src/main/resources/config`, rerun step 2 so `app-config` is recreated.
 
-Manual setup (skip install.sh)
+6. **Update config files**: If you modify files under `configService/src/main/resources/config`, rerun step 2 to recreate the `app-config` ConfigMap.
+
+## Manual Setup (alternative to install.sh)
+
 Run these commands from repo root in order:
-1. Create namespace (if missing) allow network traffic and create topic:
+
+1. **Create namespace**:
    ```bash
    kubectl create namespace microservice 2>/dev/null || true
-
    ```
-2. Miscellaneous: Allow network policy and topic creation
+
+2. **Apply network policy and Kafka topic**:
    ```bash
    kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml
-   ```
-    ```bash
    kubectl apply -f setup/k8s/microservice/config-bus-topic.yaml
    ```
-3. Shared ConfigMaps:
-   
-   ```bash
-   kubectl apply -f setup/k8s/microservice/mysql-initdb-configmap.yaml
-   ```
-    ```bash
-   kubectl apply -f setup/k8s/microservice/config-map/ -n microservice
-    ```
-   ```bash
-   kubectl apply -f setup/k8s/microservice/alloy-config.yaml -n microservice
-   ``` 
 
-4. Database:
+3. **Create shared ConfigMaps**:
    ```bash
-   kubectl apply -f setup/k8s/microservice/mysql.yaml -n microservice
+   kubectl apply -f setup/k8s/microservice/config-map/ -n microservice
    ```
-5. Services (set IMAGE_REPO/IMAGE_VERSION first):
+
+4. **Deploy MySQL database**:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/deployment/mysql.yaml -n microservice
+   ```
+
+5. **Deploy services** (set IMAGE_REPO/IMAGE_VERSION first):
    ```bash
    export IMAGE_REPO=justamitsaha
    export IMAGE_VERSION=v1
-   envsubst < setup/k8s/microservice/configservice.yaml | kubectl apply -n microservice -f -
-   envsubst < setup/k8s/microservice/discovery.yaml    | kubectl apply -n microservice -f -
-   envsubst < setup/k8s/microservice/gateway.yaml      | kubectl apply -n microservice -f -
-   envsubst < setup/k8s/microservice/customer.yaml     | kubectl apply -n microservice -f -
-   envsubst < setup/k8s/microservice/reactive-order.yaml | kubectl apply -n microservice -f -
-   envsubst < setup/k8s/microservice/webapp.yaml       | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/configservice.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/discovery.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/gateway.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/customer.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/reactive-order.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/webapp.yaml | kubectl apply -n microservice -f -
    ```
-6. Ingress:
+
+6. **Create Ingress**:
    ```bash
    kubectl apply -f setup/k8s/microservice/ingress.yaml -n microservice
    ```
-7. Watch pods and verify like in steps 4–5 above.
 
-Uninstall
-- Run: `bash setup/k8s/microservice/uninstall.sh`
-- Optionally deletes the `microservice` namespace when prompted.
+7. **Verify deployment** following steps 4-5 from the Install section above.
 
-Ingress paths (example)
+## Uninstall
+```bash
+bash setup/k8s/microservice/uninstall.sh
+```
+You'll be prompted whether to delete the `microservice` namespace.
+
+## Ingress Paths
 - `/` → webapp (port 80)
 - `/api/customer` → customerService (8081)
 - `/api/order` → reactiveOrderService (8080)
@@ -100,18 +107,21 @@ Ingress paths (example)
 - `/eureka` → discoveryService (8761)
 - `/config` → configService (8888)
 
-Config Server and Profiles
-- Apps are started with `SPRING_PROFILES_ACTIVE=gcp` (set via ConfigMap env vars).
+## Config Server and Profiles
+- Apps start with `SPRING_PROFILES_ACTIVE=gcp` (set via ConfigMap environment variables)
 - Config Server URI: `http://configservice.microservice.svc.cluster.local:8888`
-- `configmap-app-settings.yaml` plus `app-config` ConfigMap (from configService resources) feed both in-jar properties and Config Server overrides.
+- Configuration sourced from `configmap-app-settings.yaml` and `app-config` ConfigMap (created from configService resources)
 
-Tracing/Logs Sidecar (Alloy)
-- Alloy sidecar exposes OTLP on localhost:4317/4318; apps export OTLP to `http://localhost:4318`.
-- Alloy forwards traces to `tempo.observability.svc.cluster.local:4317` and logs to `loki.observability.svc.cluster.local:3100`.
+## Tracing/Logs Sidecar (Alloy)
+- Alloy sidecar exposes OTLP on `localhost:4317/4318`
+- Apps export OTLP to `http://localhost:4318`
+- Alloy forwards:
+  - Traces to `tempo.observability.svc.cluster.local:4317`
+  - Logs to `loki.observability.svc.cluster.local:3100`
 
-Prometheus Metrics
-- Each Deployment has annotations for Prometheus to scrape `/actuator/prometheus` on the service’s container port.
+## Prometheus Metrics
+Each Deployment includes annotations for Prometheus to scrape `/actuator/prometheus` on the service's container port.
 
-Images
-- The manifests use `$IMAGE_REPO/new-ms-<service>:$IMAGE_VERSION` to match `build-and-push.sh` outputs.
-- Override via `IMAGE_REPO=<repo> IMAGE_VERSION=<tag>` when running install.sh.
+## Container Images
+- Manifests use `$IMAGE_REPO/new-ms-<service>:$IMAGE_VERSION` pattern (matches `build-and-push.sh` outputs)
+- Override with: `IMAGE_REPO=<repo> IMAGE_VERSION=<tag>` when running install.sh

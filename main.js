@@ -1,91 +1,77 @@
-   /* ---------------------------
-       DARK MODE WITH STORAGE
-    ----------------------------*/
-    function toggleDarkMode() {
-        document.body.classList.toggle("dark");
-        localStorage.setItem("darkMode", document.body.classList.contains("dark"));
-    }
-    if (localStorage.getItem("darkMode") === "true") {
-        document.body.classList.add("dark");
-    }
+/* ===========================
+   Configuration: URLs + Commands
+   =========================== */
 
+/* ===========================================
+   URL Generator
+=========================================== */
+const URL_MAP = {
+    "Web App": "/web",
+    "Config Server Actuator": "/config/actuator/health",
+    "Config for Order API ": "/config/order-service/dev",
+    "Config for Customer API": "/config/customer-service/default/main",
+    "Config for Gateway": "/config/gateway-service/default/main",
+    "Config for Discovery": "/config/discovery-service/default/main",
+    "Eureka Server": "/eureka",
+    "Eureka Actuator:": "/eureka/actuator/health",
+    "Gateway Actuator": "/gateway",
+    "Customer Actuator": "/api/customer/actuator/health",
+    "Customer Swagger": "/api/customer/swagger-ui/webjars/swagger-ui/index.html",
+    "Order Service": "/api/order"
+};
 
-    /* ---------------------------
-       URL GENERATOR + SAVE HOST
-    ----------------------------*/
-    function generateUrls() {
-        let host = document.getElementById("hostInput").value.trim();
-        if (!host) return;
-
-        // Auto-prefix http:// if missing
-        if (!host.startsWith("http://") && !host.startsWith("https://")) {
-            host = "http://" + host;
+/* ===========================================
+   Commands rendering (compact)
+   NOW USING ONLY STRINGS (NO LABELS)
+=========================================== */
+const COMMAND_SECTIONS = [
+    {
+        "title": "App Specific changes",
+        "description": "Essential troubleshooting commands",
+        "commands": {
+            "cd /c/Amit/Work/code/Java/microservice/microservice-Patterns": "Go to project root",
+            "export IMAGE_REPO=justamitsaha": "Set Docker image repo",
+            "export IMAGE_VERSION=v1": "Set version tag",
+            "envsubst < setup/k8s/microservice/deployment/configservice.yaml | kubectl apply -n microservice -f -": "Apply Config Service deployment",
+            "envsubst < setup/k8s/microservice/deployment/discovery.yaml    | kubectl apply -n microservice -f -": "Apply Discovery Service deployment",
+            "envsubst < setup/k8s/microservice/deployment/gateway.yaml      | kubectl apply -n microservice -f -": "Apply API Gateway deployment",
+            "envsubst < setup/k8s/microservice/deployment/customer.yaml     | kubectl apply -n microservice -f -": "Apply Customer MS deployment",
+            "envsubst < setup/k8s/microservice/deployment/reactive-order.yaml | kubectl apply -n microservice -f -": "Apply Reactive Order MS deployment",
+            "envsubst < setup/k8s/microservice/deployment/webapp.yaml       | kubectl apply -n microservice -f -": "Apply Web App deployment",
+            "kubectl apply -f setup/k8s/microservice/ingress -n microservice": "Apply Ingress setup",
+            "curl -X POST http://localhost:8080/actuator/busrefresh": "Trigger config refresh via Bus"
         }
+    },
 
-        // save host to localStorage
-        localStorage.setItem("savedHost", host);
-
-        renderUrls(host);
-    }
-
-    // Render URLs based on host
-    function renderUrls(host) {
-        const cleanHost = host.replace(/\/+$/, "");
-
-        const urls = {
-            "Customer Service": `${cleanHost}/api/customer`,
-            "Order Service": `${cleanHost}/api/order`,
-            "Gateway": `${cleanHost}/gateway`,
-            "Eureka Server": `${cleanHost}/eureka`,
-            "Config Server Actuator": `${cleanHost}/config/actuator/health`,
-            "Web App": `${cleanHost}/`
-        };
-
-        let html = "";
-
-        for (const [name, url] of Object.entries(urls)) {
-            html += `
-                <div class="url-row">
-                    <strong>${name}</strong>
-                    <span class="url-value">${url}</span>
-                    <a href="${url}" target="_blank">Open</a>
-                    <button onclick="copySpanValue(this)">Copy</button>
-                </div>
-            `;
+    {
+        "title": "Kubernetes Basics",
+        "description": "Core kubectl operations",
+        "commands": {
+            "kubectl get ns": "List all namespaces",
+            "kubectl get all -n microservice": "List all resources in microservice namespace",
+            "kubectl get pods -A": "List all pods in all namespaces",
+            "kubectl get svc -A": "List all services in all namespaces",
+            "kubectl describe pod POD_NAME -n NAMESPACE": "Describe a specific pod",
+            "kubectl delete ingress --all -n microservice": "Delete all ingresses in microservice namespace"
         }
+    },
 
-        document.getElementById("generatedLinks").innerHTML = html;
-    }
-
-    // On page load: auto-fill saved host
-    window.onload = () => {
-        const savedHost = localStorage.getItem("savedHost");
-
-        if (savedHost) {
-            document.getElementById("hostInput").value = savedHost;
-            renderUrls(savedHost);
+    {
+        "title": "Port Forwarding",
+        "description": "Access internal services locally",
+        "commands": {
+            "kubectl port-forward svc/mysql 3307:3306 -n microservice": "Forward MySQL to localhost:3307",
+            "kubectl port-forward svc/redis 6380:6379 -n microservice": "Forward Redis to localhost:6380"
         }
-    };
+    },
 
-
-    /* ---------------------------
-       COPY FROM SPAN
-    ----------------------------*/
-    function copySpanValue(btn) {
-        const text = btn.parentNode.querySelector("span").innerText.trim();
-        navigator.clipboard.writeText(text);
+    {
+        "title": "Docker Commands",
+        "description": "Useful for debugging containers",
+        "commands": {
+            "docker logs -f container-name": "Tail container logs",
+            "docker exec -it container-name sh": "Enter running container shell"
+        }
     }
+];
 
-
-    /* ---------------------------
-       COMMAND SEARCH
-    ----------------------------*/
-    function searchCommands() {
-        const query = document.getElementById("cmdSearch").value.toLowerCase();
-        const cmdSections = document.querySelectorAll(".cmd-row");
-
-        cmdSections.forEach(row => {
-            const content = row.innerText.toLowerCase();
-            row.style.display = content.includes(query) ? "" : "none";
-        });
-    }

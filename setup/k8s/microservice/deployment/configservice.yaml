@@ -25,23 +25,14 @@ spec:
           ports:
             - containerPort: 8888
               name: http
-
-          # --------------------------
-          # 1️⃣ Load common config
-          # --------------------------
           envFrom:
             - configMapRef:
                 name: microservice-app-settings
-            # --------------------------
-            # 2️⃣ Load config-service-specific values
-            # --------------------------
             - configMapRef:
                 name: configservice-config
-
-          # --------------------------
-          # 3️⃣ Service-specific pod-level env
-          # --------------------------
           env:
+            - name: SPRING_CONFIG_IMPORT
+              value: ""
             - name: OTEL_SERVICE_NAME
               value: configservice
         # -----------------------
@@ -49,7 +40,12 @@ spec:
         # -----------------------
         - name: alloy
           image: grafana/alloy:latest
-          args: ["run", "--stability.level=public-preview", "/etc/alloy/alloy.alloy"]
+          args:
+            [
+              "run",
+              "--stability.level=public-preview",
+              "/etc/alloy/alloy.alloy",
+            ]
           env:
             - name: ALLOY_ENABLE_FEATURES
               value: flow

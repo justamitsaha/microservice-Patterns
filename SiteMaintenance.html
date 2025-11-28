@@ -1,201 +1,623 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Developer Toolkit</title>
-    <script src="main.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: var(--bg);
-            color: var(--text);
-            transition: 0.3s;
-        }
+  <meta charset="utf-8" />
+  <title>Developer Toolkit — Compact + Themes (Radial)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="main.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #000;
+      --card-bg: #f4f4f4;
+      --border: #bbb;
+      --btn-bg: #007bff;
+      --btn-text: #fff;
+      --accent: #007bff
+    }
 
-        :root {
-            --bg: #ffffff;
-            --text: #000;
-            --card-bg: #f2f2f2;
-            --border: #ccc;
-            --btn-bg: #007bff;
-            --btn-text: #fff;
-        }
+    html,
+    body {
+      height: 100%
+    }
 
-        .dark {
-            --bg: #1e1e1e;
-            --text: #e8e8e8;
-            --card-bg: #2b2b2b;
-            --border: #555;
-            --btn-bg: #4ea1ff;
-            --btn-text: #000;
-        }
+    body {
 
-        h2 {
-            margin-top: 30px;
-        }
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 360ms ease, color 360ms ease;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-        .card {
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-        }
+    /* tiny headings */
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 18px
+    }
 
-        input[type="text"] {
-            width: 300px;
-            padding: 6px;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-        }
+    h2 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      cursor: pointer
+    }
 
-        button {
-            padding: 6px 12px;
-            background: var(--btn-bg);
-            color: var(--btn-text);
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    h3 {
+      margin: 4px 0;
+      font-size: 13px;
+      cursor: pointer
+    }
 
-        button:hover {
-            opacity: 0.8;
-        }
+    /* card - tight */
+    .card {
+      background: var(--card-bg);
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      margin-bottom: 6px
+    }
 
-        .cmd-row, .url-row {
-            margin: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    /* compact inputs/buttons */
+    input[type="text"],
+    input#hostInput,
+    input#cmdSearch {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 12px
+    }
 
-        .cmd, .url-value {
-            font-family: monospace;
-            padding: 6px;
-            border-radius: 5px;
-            background: #00000033;
-        }
+    /* layout for url row - single compact row */
+    .url-flex {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap
+    }
 
-        .toggle-dark {
-            float: right;
-            margin-top: -45px;
-        }
-    </style>
+    .url-input {
+      flex: 1;
+      min-width: 160px
+    }
+
+    .url-command {
+      background: #0b1117;
+      color: #c9d1d9;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: 1px solid #161b22;
+    }
+
+    /* generated links area small */
+    .url-row {
+      display: flex;
+      justify-content: space-between;
+      background: #0b1117;
+      color: #c9d1d9;
+      padding: 6px;
+      border-radius: 6px;
+      margin: 4px 0;
+      border: 1px solid #161b22;
+      font-size: 12px
+    }
+
+    /* commands grid compact */
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 8px;
+      margin-top: 6px
+    }
+
+    /* Option B: dark github-style command blocks (static) */
+    .cmd-row {
+      display: flex;
+      flex-direction: column;
+      background: #0b1117;
+      color: #c9d1d9;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+      min-width: 0;
+      font-size: 13px;
+    }
+
+    .cmd-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 8px
+    }
+
+    .cmd-label {
+      font-weight: 700;
+      color: #cbd5df;
+      font-size: 13px
+    }
+
+    .cmd-copy-btn {
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: pointer
+    }
+
+    .cmd-copy-btn:active {
+      transform: translateY(1px)
+    }
+
+    .cmd-body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+        monospace;
+      font-size: 12px;
+      background: #555555e8;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.02)
+    }
+
+    /* top controls */
+    .top-controls {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 6px
+    }
+
+    /* compact class adjustments */
+    .compact .card {
+      padding: 4px
+    }
+
+    .compact .cmd-row {
+      padding: 6px
+    }
+
+    .compact input[type="text"] {
+      padding: 5px;
+      font-size: 12px
+    }
+
+    /* radial styles - FULL SIZE (Option A) */
+    .radial {
+      position: relative;
+      display: inline-block
+    }
+
+    .radial-menu {
+      position: fixed;
+      width: 320px;
+      height: 320px;
+      left: calc(100% - 360px);
+      top: 8px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 220ms ease, transform 220ms;
+      z-index: 9997
+    }
+
+    .radial-open .radial-menu {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0)
+    }
+
+    .radial-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.14)
+    }
+
+    .radial-item {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 220ms cubic-bezier(.2, .9, .3, 1), box-shadow 200ms
+    }
+
+    .radial-item:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12)
+    }
+
+    .theme-emoji {
+      font-size: 18px
+    }
+
+    .theme-name {
+      font-size: 11px;
+      margin-top: 4px;
+      color: var(--text);
+      opacity: 0.9
+    }
+
+    /* fade overlay + toast */
+    .theme-fade {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 360ms ease;
+      z-index: 9998
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 10px;
+      transform: translateX(-50%);
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.78);
+      color: #fff;
+      font-weight: 700;
+      opacity: 0;
+      transition: opacity 220ms, transform 220ms;
+      z-index: 9999
+    }
+
+    /* responsive */
+    @media(max-width:760px) {
+      .radial-menu {
+        left: calc(50% - 160px);
+        top: 70px
+      }
+
+      .cmd-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))
+      }
+
+      input[type="text"] {
+        width: 150px
+      }
+    }
+  </style>
 </head>
+
 <body>
 
-<button class="toggle-dark" onclick="toggleDarkMode()">🌙 Dark Mode</button>
-
-<h1>Developer Toolkit</h1>
-
-<!-- ========================= -->
-<!--  URL GENERATOR SECTION    -->
-<!-- ========================= -->
-<div class="card">
-    <h2>Dynamic URL Generator</h2>
-
-    <div class="cmd-row">
-        <span class="cmd">kubectl get svc -n ingress-nginx</span>
-        <button onclick="copySpanValue(this)">Copy</button>
+  <!-- Top controls -->
+  <div class="top-controls">
+    <div class="radial" id="radial-root">
+      <button class="icon-btn" id="theme-toggle" title="Theme picker">🌀</button>
+      <div class="radial-menu" id="radial-menu" aria-hidden="true"></div>
     </div>
 
-    <p>Enter Hostname / IP (e.g., http://34.12.56.78 or 35.226.236.202)</p>
+    <button class="icon-btn" id="compact-toggle" title="Compact mode">🧩</button>
+  </div>
 
-    <input type="text" id="hostInput" placeholder="http://localhost">
-    <button onclick="generateUrls()">Generate</button>
+  <h1>Developer Toolkit</h1>
 
-    <h3>Generated URLs</h3>
-    <div id="generatedLinks"></div>
-</div>
+  <!-- URL generator compact row -->
+  <div class="card" id="url-card">
+    <h2 id="url-header">Dynamic URL Generator ▼</h2>
+    <div id="url-body">
+      <div class="url-flex" style="align-items:center">
+        <div class="url-command" title="Ingress command">kubectl get svc -n ingress-nginx</div>
+        <button class="cmd-copy-btn" onclick="copyText('kubectl get svc -n ingress-nginx')">Copy</button>
 
+        <input id="hostInput" class="url-input" placeholder="http://localhost" />
+        <button class="cmd-copy-btn" id="genBtn">Generate</button>
+      </div>
 
-<!-- ========================= -->
-<!--  IMPORTANT COMMANDS       -->
-<!-- ========================= -->
-<div class="card">
+      <div id="generatedLinks" style="margin-top:6px;width: 50%;"></div>
+    </div>
+  </div>
+
+  <!-- Commands -->
+  <div class="card">
     <h2>Important Commands</h2>
-
-    <input type="text" id="cmdSearch" placeholder="Search commands..." onkeyup="searchCommands()">
-
-    <div id="cmdSections">
-
-        <div class="cmd-section">
-            <h3>Apply changes</h3>
-            <p>Essential troubleshooting commands</p>
-            <div class="cmd-row">
-                <span class="cmd">cd /c/Amit/Work/code/Java/microservice/microservice-Patterns</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-
-            <div class="cmd-row">
-                <span class="cmd">kubectl apply -f setup/k8s/microservice/ingress.yaml -n microservice</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-        </div>
-
-        <!-- SECTION 1 -->
-        <div class="cmd-section">
-            <h3>Kubernetes Basics</h3>
-            <p>Essential troubleshooting commands</p>
-
-            <div class="cmd-row">
-                <span class="cmd">kubectl get pods -A</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-            <div class="cmd-row">
-                <span class="cmd">kubectl get svc -A</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-            <div class="cmd-row">
-                <span class="cmd">kubectl describe pod POD_NAME -n NAMESPACE</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-        </div>
-
-        <hr>
-
-        <!-- SECTION 2 -->
-        <div class="cmd-section">
-            <h3>Port Forwarding</h3>
-            <p>Access internal services locally</p>
-
-            <div class="cmd-row">
-                <span class="cmd">kubectl port-forward svc/mysql 3307:3306 -n microservice</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-
-            <div class="cmd-row">
-                <span class="cmd">kubectl port-forward svc/redis 6380:6379 -n microservice</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-        </div>
-
-        <hr>
-
-        <!-- SECTION 3 -->
-        <div class="cmd-section">
-            <h3>Docker Commands</h3>
-            <p>Useful for debugging containers</p>
-
-            <div class="cmd-row">
-                <span class="cmd">docker logs -f container-name</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-
-            <div class="cmd-row">
-                <span class="cmd">docker exec -it container-name sh</span>
-                <button onclick="copySpanValue(this)">Copy</button>
-            </div>
-        </div>
-
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="cmdSearch" placeholder="Search commands..." />
+      <div style="flex:1"></div>
     </div>
-</div>
 
-<script>
+    <div id="cmdSections"></div>
+  </div>
 
-</script>
+  <!-- overlays -->
+  <div class="theme-fade" id="theme-fade"></div>
+  <div class="toast" id="theme-toast"></div>
 
+  <script>
+    /* =======================
+       Configuration
+       ======================= */
+
+
+    /* Themes metadata (full radial order) */
+    const THEMES = [
+      { id: "theme-light", name: "Light", emoji: "🌞" },
+      { id: "theme-dark", name: "Dark", emoji: "🌙" },
+      { id: "theme-grey", name: "Grey", emoji: "⚪" },
+      { id: "theme-hacker", name: "Hacker", emoji: "💻" },
+      { id: "theme-solarized", name: "Solarized", emoji: "🌅" },
+      { id: "theme-dracula", name: "Dracula", emoji: "🧛" },
+      { id: "theme-highcontrast", name: "High Contrast", emoji: "⚡" },
+      { id: "theme-monokai", name: "Monokai", emoji: "🎨" },
+      { id: "theme-github", name: "GitHub", emoji: "🐙" },
+      { id: "theme-nord", name: "Nord", emoji: "❄️" },
+      { id: "theme-tokyo", name: "Tokyo Night", emoji: "🌆" }
+    ];
+
+    /* Inject theme CSS for all themes (single-file) */
+    (function injectThemeCSS() {
+      const s = document.createElement('style');
+      s.innerHTML = `
+      .theme-light{--bg:#ffffff;--text:#111;--card-bg:#f4f4f4;--border:#d0d7de;--btn-bg:#0366d6;--btn-text:#fff;--accent:#0366d6}
+      .theme-dark{--bg:#0d1117;--text:#c9d1d9;--card-bg:#0b1117;--border:#30363d;--btn-bg:#4ea1ff;--btn-text:#000;--accent:#4ea1ff}
+      .theme-grey{--bg:#e9ecef;--text:#111;--card-bg:#e6eaee;--border:#cfcfcf;--btn-bg:#555;--btn-text:#fff;--accent:#555}
+      .theme-hacker{--bg:#000000;--text:#00ff7f;--card-bg:#071103;--border:#003300;--btn-bg:#003300;--btn-text:#00ff7f;--accent:#00ff7f}
+      .theme-solarized{--bg:#fdf6e3;--text:#657b83;--card-bg:#eee8d5;--border:#93a1a1;--btn-bg:#268bd2;--btn-text:#fff;--accent:#268bd2}
+      .theme-dracula{--bg:#282a36;--text:#f8f8f2;--card-bg:#44475a;--border:#6272a4;--btn-bg:#bd93f9;--btn-text:#000;--accent:#bd93f9}
+      .theme-highcontrast{--bg:#000000;--text:#ffffff;--card-bg:#000000;--border:#ffffff;--btn-bg:#ffffff;--btn-text:#000;--accent:#fff}
+      .theme-monokai{--bg:#272822;--text:#f8f8f2;--card-bg:#2f2f2f;--border:#3b3b3b;--btn-bg:#f92672;--btn-text:#fff;--accent:#f92672}
+      .theme-github{--bg:#ffffff;--text:#24292e;--card-bg:#f6f8fa;--border:#d1d5da;--btn-bg:#24292e;--btn-text:#fff;--accent:#24292e}
+      .theme-nord{--bg:#2e3440;--text:#d8dee9;--card-bg:#3b4252;--border:#4c566a;--btn-bg:#81a1c1;--btn-text:#2e3440;--accent:#81a1c1}
+      .theme-tokyo{--bg:#1a1b26;--text:#c0caf5;--card-bg:#24283b;--border:#2f334d;--btn-bg:#7aa2f7;--btn-text:#0b1020;--accent:#7aa2f7}
+      `;
+      document.head.appendChild(s);
+    })();
+
+    /* Audio beep (WebAudio) */
+    const AudioPlayer = (function () {
+      let ctx = null;
+      function ensure() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      function beep(freq = 880, dur = 0.08, type = 'sine', vol = 0.06) {
+        try {
+          ensure();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = type; o.frequency.value = freq;
+          g.gain.value = vol;
+          o.connect(g); g.connect(ctx.destination);
+          o.start(); o.stop(ctx.currentTime + dur);
+        } catch (e) { }
+      }
+      return { beep };
+    })();
+
+    /* Apply theme, animate fade, toast + sound */
+    function applyThemeById(themeId) {
+      THEMES.forEach(t => document.body.classList.remove(t.id));
+      document.body.classList.add(themeId);
+
+      const fade = document.getElementById('theme-fade');
+      fade.style.background = getComputedStyle(document.body).getPropertyValue('--bg') || '#fff';
+      fade.style.opacity = 0.95;
+      setTimeout(() => fade.style.opacity = 0, 40);
+
+      const info = THEMES.find(t => t.id === themeId)?.name || themeId;
+      showToast(info);
+      AudioPlayer.beep(920, 0.09, 'sine', 0.06);
+      localStorage.setItem('themeMode', themeId);
+    }
+    let toastTimeout = null;
+    function showToast(txt) {
+      const el = document.getElementById('theme-toast');
+      el.textContent = txt;
+      el.style.opacity = 1;
+      el.style.transform = 'translateY(0)';
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => { el.style.opacity = 0; el.style.transform = 'translateY(-6px)'; }, 1400);
+    }
+
+    /* init theme from storage or default */
+    (function initTheme() {
+      const saved = localStorage.getItem('themeMode') || THEMES[0].id;
+      applyThemeById(saved);
+    })();
+
+    /* Build radial (full-size) */
+    const radialRoot = document.getElementById('radial-root');
+    const radialMenu = document.getElementById('radial-menu');
+    let radialOpen = false;
+    function buildRadial() {
+      radialMenu.innerHTML = '';
+      const center = document.createElement('div');
+      center.className = 'radial-center';
+      center.innerHTML = '<div style="text-align:center"><div style="font-size:22px">🌀</div><div style="font-size:11px;margin-top:6px">Cycle</div></div>';
+      center.onclick = centerClick;
+      radialMenu.appendChild(center);
+
+      const r = 110; const cx = 160; const cy = 160; const n = THEMES.length;
+      THEMES.forEach((t, i) => {
+        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+        const x = cx + Math.cos(angle) * r - 26;
+        const y = cy + Math.sin(angle) * r - 26;
+        const item = document.createElement('div');
+        item.className = 'radial-item';
+        item.style.left = x + 'px'; item.style.top = y + 'px';
+        item.innerHTML = `<div style="text-align:center"><div class="theme-emoji">${t.emoji}</div><div class="theme-name">${t.name}</div></div>`;
+        item.title = t.name;
+        item.onclick = (e) => { e.stopPropagation(); applyThemeById(t.id); closeRadial(); };
+        radialMenu.appendChild(item);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (radialOpen && !radialRoot.contains(e.target)) closeRadial();
+      }, { capture: true });
+    }
+    function openRadial() { radialRoot.classList.add('radial-open'); radialMenu.style.opacity = '1'; radialMenu.setAttribute('aria-hidden', 'false'); radialOpen = true; AudioPlayer.beep(680, 0.06, 'sine', 0.05); }
+    function closeRadial() { radialRoot.classList.remove('radial-open'); radialMenu.style.opacity = '0'; radialMenu.setAttribute('aria-hidden', 'true'); radialOpen = false; }
+    function toggleRadial() { radialOpen ? closeRadial() : openRadial(); }
+    function centerClick(e) { e.stopPropagation(); const cur = localStorage.getItem('themeMode') || THEMES[0].id; const idx = THEMES.findIndex(t => t.id === cur); const next = THEMES[(idx + 1) % THEMES.length]; applyThemeById(next.id); }
+    document.getElementById('theme-toggle').addEventListener('click', (e) => { e.stopPropagation(); toggleRadial(); });
+    buildRadial();
+
+    /* position radial on resize */
+    (function placeRadial() { const menu = document.getElementById('radial-menu'); function p() { menu.style.left = `calc(100% - ${menu.offsetWidth + 28}px)`; menu.style.top = `8px`; } window.addEventListener('resize', p); setTimeout(p, 80); })();
+
+    /* Compact toggle */
+    const compactBtn = document.getElementById('compact-toggle');
+    compactBtn.addEventListener('click', () => {
+      document.documentElement.classList.toggle('compact');
+      AudioPlayer.beep(1000, 0.05, 'sine', 0.04);
+      localStorage.setItem('compactMode', document.documentElement.classList.contains('compact'));
+    });
+    if (localStorage.getItem('compactMode') === 'true') document.documentElement.classList.add('compact');
+
+    /* Copy helper */
+    function copyText(txt, btn) {
+      navigator.clipboard.writeText(txt).then(() => { if (btn) { const orig = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = orig, 700); } AudioPlayer.beep(1400, 0.06, 'triangle', 0.06); }).catch(() => { });
+    }
+
+    /* Render commands and collapsible sections */
+    function loadCommandSections() {
+      const container = document.getElementById('cmdSections');
+      container.innerHTML = '';
+      COMMAND_SECTIONS.forEach((section, idx) => {
+        const sec = document.createElement('div');
+        sec.id = `section-${idx}`;
+        sec.innerHTML = `<h3 class="sec-hdr" data-idx="${idx}">${escapeHtml(section.title)} <span style="opacity:.7">▼</span></h3>
+                         <p style="margin:0 0 6px 0;font-size:12px;opacity:.7">${escapeHtml(section.description || '')}</p>
+                         <div class="cmd-grid" id="section-body-${idx}"></div>
+                         <div class="hr"></div>`;
+        container.appendChild(sec);
+
+        const grid = sec.querySelector('.cmd-grid');
+        section.commands && Object.entries(section.commands).forEach(([cmd, desc]) => {
+          const row = document.createElement("div");
+          row.className = "cmd-row";
+
+          row.innerHTML = `
+        <div class="cmd-top">
+            <div class="cmd-label">${escapeHtml(desc)}</div>
+            <button class="cmd-copy-btn" data-cmd="${escapeAttr(cmd)}">Copy</button>
+        </div>
+
+        <div class="cmd-body">${escapeHtml(cmd)}</div>
+    `;
+
+          grid.appendChild(row);
+        });
+
+
+        // collapse/expand
+        sec.querySelector('.sec-hdr').addEventListener('click', (e) => {
+          const body = document.getElementById(`section-body-${idx}`);
+          const arrow = e.currentTarget.querySelector('span');
+          if (body.style.display === 'none') { body.style.display = 'grid'; arrow.textContent = '▼'; }
+          else { body.style.display = 'none'; arrow.textContent = '►'; }
+        });
+      });
+
+      // attach copy handlers
+      document.querySelectorAll('.cmd-copy-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const txt = btn.dataset.cmd;
+          copyText(txt, btn);
+        });
+      });
+    }
+    loadCommandSections();
+
+    /* Search */
+    document.getElementById('cmdSearch').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('.cmd-row').forEach(r => {
+        r.style.display = (!q || r.innerText.toLowerCase().includes(q)) ? '' : 'none';
+      });
+    });
+
+    /* URL generator logic */
+    document.getElementById('genBtn').addEventListener('click', () => {
+      generateUrls();
+    });
+    function generateUrls() {
+      let host = document.getElementById('hostInput').value.trim();
+      if (!host) return;
+      if (!host.startsWith('http://') && !host.startsWith('https://')) host = 'http://' + host;
+      localStorage.setItem('savedHost', host);
+      renderUrls(host);
+    }
+    function renderUrls(host) {
+      const clean = host.replace(/\/+$/, '');
+      const container = document.getElementById('generatedLinks');
+      container.innerHTML = '';
+      Object.entries(URL_MAP).forEach(([name, path]) => {
+        const full = clean + path;
+        const div = document.createElement('div'); div.className = 'url-row';
+        div.innerHTML = `<strong>${escapeHtml(name)}</strong>
+          <div style="display:flex;gap:8px;align-items:center">
+             <span style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(full)}</span>
+             <a href="${escapeAttr(full)}" target="_blank" style="color: white;">Open</a>
+             <button class="cmd-copy-btn" data-url="${escapeAttr(full)}">Copy</button>
+          </div>`;
+        container.appendChild(div);
+      });
+
+      document.querySelectorAll('.url-row .cmd-copy-btn').forEach(b => {
+        b.addEventListener('click', () => { copyText(b.dataset.url, b); });
+      });
+    }
+    /* restore saved host */
+    const savedHost = localStorage.getItem('savedHost');
+    if (savedHost) { document.getElementById('hostInput').value = savedHost; renderUrls(savedHost); }
+
+    /* utils */
+    function escapeHtml(s) { return (s + '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function escapeAttr(s) { return (s + '').replace(/"/g, '&quot;').replace(/'/g, "&#39;"); }
+
+    /* position radial nicely on resize */
+    (function positionRadial() {
+      const menu = document.getElementById('radial-menu');
+      function place() { menu.style.left = `calc(100% - ${menu.offsetWidth + 28}px)`; menu.style.top = `8px`; }
+      window.addEventListener('resize', place); setTimeout(place, 80);
+    })();
+
+    document.getElementById("url-header").addEventListener("click", toggleUrlSection);
+
+    function toggleUrlSection() {
+      const body = document.getElementById("url-body");
+      const header = document.getElementById("url-header");
+
+      if (body.style.display === "none") {
+        body.style.display = "block";
+        header.innerHTML = "Dynamic URL Generator ▼";
+      } else {
+        body.style.display = "none";
+        header.innerHTML = "Dynamic URL Generator ►";
+      }
+    }
+  </script>
 
 </body>
+
 </html>
