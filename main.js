@@ -12,8 +12,8 @@ const URL_MAP = {
     "Config for Customer API": "/config/customer-service/default/main",
     "Config for Gateway": "/config/gateway-service/default/main",
     "Config for Discovery": "/config/discovery-service/default/main",
-    "Eureka Server": "/eureka",
-    "Eureka Actuator:": "/eureka/actuator/health",
+    "Eureka Dashboard": "/discovery",
+    "Eureka Actuator:": "/discovery/actuator/health",
     "Gateway Actuator": "/gateway",
     "Customer Actuator": "/api/customer/actuator/health",
     "Customer Swagger": "/api/customer/swagger-ui/webjars/swagger-ui/index.html",
@@ -26,8 +26,7 @@ const URL_MAP = {
 =========================================== */
 const COMMAND_SECTIONS = [
     {
-        "title": "App Specific changes",
-        "description": "Essential troubleshooting commands",
+        "title": "App Set up Commands",
         "commands": {
             "cd /c/Amit/Work/code/Java/microservice/microservice-Patterns": "Go to project root",
             "export IMAGE_REPO=justamitsaha": "Set Docker image repo",
@@ -42,9 +41,8 @@ const COMMAND_SECTIONS = [
             "curl -X POST http://localhost:8080/actuator/busrefresh": "Trigger config refresh via Bus"
         }
     },
-
     {
-        "title": "Kubernetes Basics",
+        "title": "List pods/services etc",
         "description": "Core kubectl operations",
         "commands": {
             "kubectl get ns": "List all namespaces",
@@ -55,7 +53,32 @@ const COMMAND_SECTIONS = [
             "kubectl delete ingress --all -n microservice": "Delete all ingresses in microservice namespace"
         }
     },
+    {
+        "title": "Deployments Rollout with Restart with out changing image tag",
+        "commands": {
+            "kubectl rollout restart deployment/configservice -n microservice": "Restart Web App deployment",
+            "kubectl rollout restart deployment/discovery -n microservice": "Restart Gateway deployment",
+            "kubectl rollout restart deployment/gateway -n microservice": "Restart Customer MS deployment",
+            "kubectl rollout restart deployment/customerservice -n microservice": "Restart Reactive Order MS deployment",
+            "kubectl rollout restart deployment/reactiveorderservice -n microservice": "Restart Gateway deployment",
+            "kubectl rollout restart deployment/webapp -n microservice": "Restart Customer MS deployment",
 
+            "kubectl rollout status deployment/configservice -n microservice": "Check rollout status of Config Service deployment",
+            "kubectl rollout status deployment/discovery -n microservice": "Check rollout status of Discovery Service deployment",
+            "kubectl rollout status deployment/gateway -n microservice": "Check rollout status of Gateway deployment",
+            "kubectl rollout status deployment/customerservice -n microservice": "Check rollout status of Customer MS deployment",
+            "kubectl rollout status deployment/reactiveorderservice -n microservice": "Check rollout status of Reactive Order MS deployment",
+            "kubectl rollout status deployment/webapp -n microservice": "Check rollout status of Web App deployment",
+
+            "kubectl get pods -n microservice -l app=configservice": "Get pods for Config Service",
+            "kubectl get pods -n microservice -l app=discovery": "Get pods for Discovery Service",
+            "kubectl get pods -n microservice -l app=gateway": "Get pods for Gateway",
+            "kubectl get pods -n microservice -l app=customerservice": "Get pods for Customer MS",
+            "kubectl get pods -n microservice -l app=reactiveorderservice": "Get pods for Reactive Order MS",
+            "kubectl get pods -n microservice -l app=webapp": "Get pods for Web App"
+
+        }
+    },
     {
         "title": "Port Forwarding",
         "description": "Access internal services locally",

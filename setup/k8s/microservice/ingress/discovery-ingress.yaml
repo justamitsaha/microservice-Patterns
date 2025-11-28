@@ -1,19 +1,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: eureka-ingress
+  name: discovery-ingress
   namespace: microservice
   annotations:
     kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
 spec:
   ingressClassName: nginx
   rules:
     - http:
         paths:
-          - path: /eureka(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /discovery
+            pathType: Prefix
             backend:
               service:
                 name: discovery
