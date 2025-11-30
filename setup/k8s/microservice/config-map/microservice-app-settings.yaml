@@ -40,7 +40,7 @@ data:
   # ============================
   # Logging Defaults (Optional)
   # ============================
-  LOGPATTERN_CONSOLE: "%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%class.%M:%L) - %msg%n"
+  LOG_PATTERN_CONSOLE: "%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%class.%M:%L) - %msg%n"
   LOG_LEVEL_ROOT: "INFO"
   LOG_LEVEL_SPRING_BOOT: "INFO"
   LOG_LEVEL_SPRING_CLOUD: "WARN"

@@ -21,9 +21,9 @@ spec:
             - containerPort: 80
           env:
             - name: API_BASE_URL
-              value: "http://gateway.microservice.svc.cluster.local:8085"
+              value: "http://35.226.236.202/gateway"
             - name: APP_THEME_COLOR
-              value: "#ff5733"
+              value: "#f0758a"
 ---
 apiVersion: v1
 kind: Service

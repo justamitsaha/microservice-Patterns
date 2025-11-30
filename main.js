@@ -19,6 +19,7 @@ const URL_MAP = {
     "Order Service": "/api/order/actuator/health",
     "Order Swagger": "/api/order/swagger-ui/index.html",
     "Web App": "/web",
+    "Grafana": "http://35.226.236.202/grafana/login"
 };
 
 /* ===========================================
@@ -41,11 +42,11 @@ const COMMAND_SECTIONS = [
             "export IMAGE_REPO=justamitsaha": "Set Docker image repo",
             "export IMAGE_VERSION=v1": "Set version tag",
             "envsubst < setup/k8s/microservice/deployment/configservice.yaml | kubectl apply -n microservice -f -": "Apply Config Service",
-            "envsubst < setup/k8s/microservice/deployment/discovery.yaml    | kubectl apply -n microservice -f -": "Apply Discovery Service",
-            "envsubst < setup/k8s/microservice/deployment/gateway.yaml      | kubectl apply -n microservice -f -": "Apply API Gateway",
-            "envsubst < setup/k8s/microservice/deployment/customer.yaml     | kubectl apply -n microservice -f -": "Apply Customer MS",
+            "envsubst < setup/k8s/microservice/deployment/discovery.yaml| kubectl apply -n microservice -f -": "Apply Discovery Service",
+            "envsubst < setup/k8s/microservice/deployment/gateway.yaml | kubectl apply -n microservice -f -": "Apply API Gateway",
+            "envsubst < setup/k8s/microservice/deployment/customer.yaml | kubectl apply -n microservice -f -": "Apply Customer MS",
             "envsubst < setup/k8s/microservice/deployment/reactive-order.yaml | kubectl apply -n microservice -f -": "Apply Reactive Order MS",
-            "envsubst < setup/k8s/microservice/deployment/webapp.yaml       | kubectl apply -n microservice -f -": "Apply Web App",
+            "envsubst < setup/k8s/microservice/deployment/webapp.yaml | kubectl apply -n microservice -f -": "Apply Web App",
             "kubectl apply -f setup/k8s/microservice/ingress -n microservice": "Apply Ingress setup"
         }
     },
@@ -91,7 +92,7 @@ const COMMAND_SECTIONS = [
         "commands": {
             "kubectl port-forward svc/gateway 8080:8080 -n microservice": "Expose Gateway to localhost:8080",
             "kubectl port-forward svc/mysql 3307:3306 -n microservice": "Expose MySQL to localhost:3307",
-            "curl -X POST http://localhost:8080/actuator/busrefresh": "Trigger Config Bus Refresh"
+            "curl -X POST http://localhost:8888/actuator/busrefresh": "Trigger Config Bus Refresh"
         }
     },
     {

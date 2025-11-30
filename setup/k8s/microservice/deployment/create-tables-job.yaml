@@ -27,13 +27,13 @@ spec:
               USE amit;
 
               CREATE TABLE IF NOT EXISTS customers (
-                id              CHAR(36)    NOT NULL PRIMARY KEY DEFAULT (uuid()),
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 name            VARCHAR(255) NOT NULL,
                 email           VARCHAR(255) NOT NULL,
-                created_at      BIGINT       NOT NULL,
+                created_at      BIGINT NOT NULL,
                 password_salt   VARCHAR(255) NOT NULL,
                 password_hash   VARCHAR(255) NOT NULL,
-                CONSTRAINT uq_customers_email UNIQUE (email)
+                UNIQUE (email)
               );
 
               CREATE INDEX idx_customers_created_at ON customers (created_at);

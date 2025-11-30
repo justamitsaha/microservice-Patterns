@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class CustomerEntity {
 
     @Id
-    private String id;
+    private Long id;
 
     private String name;
     private String email;

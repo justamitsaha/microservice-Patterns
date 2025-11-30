@@ -22,6 +22,7 @@ spec:
       containers:
         - name: app
           image: ${IMAGE_REPO}/new-ms-discovery-service:${IMAGE_VERSION}
+          imagePullPolicy: Always
           ports:
             - containerPort: 8761
               name: http
@@ -49,7 +50,12 @@ spec:
         # -------------------------------------
         - name: alloy
           image: grafana/alloy:latest
-          args: ["run", "--stability.level=public-preview", "/etc/alloy/alloy.alloy"]
+          args:
+            [
+              "run",
+              "--stability.level=public-preview",
+              "/etc/alloy/alloy.alloy",
+            ]
           env:
             - name: ALLOY_ENABLE_FEATURES
               value: flow

@@ -46,6 +46,7 @@ public class CustomerController {
 
     @PostMapping
     public ResponseEntity<Mono<CustomerEntity>> register(@RequestBody CustomerRequest request) {
+        log.info("Registering new customer with email: {}", request);
         return ResponseEntity.ok(service.create(request));
     }
 
@@ -80,8 +81,8 @@ public class CustomerController {
                     }
 
                     // ✅ Credentials OK → Generate JWT tokens
-                    String accessToken = customerServiceUtil.generateAccessToken(user.getId(), user.getEmail());
-                    String refreshToken = customerServiceUtil.generateRefreshToken(user.getId(), user.getEmail());
+                    String accessToken = customerServiceUtil.generateAccessToken(String.valueOf(user.getId()), user.getEmail());
+                    String refreshToken = customerServiceUtil.generateRefreshToken(String.valueOf(user.getId()), user.getEmail());
                     log.info("Access token {}", accessToken);
                     // Extract claims to log non-sensitive details
                     try {

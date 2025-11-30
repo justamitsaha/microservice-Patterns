@@ -72,6 +72,7 @@ Run these commands from repo root in order:
 4. **Deploy MySQL database**:
    ```bash
    kubectl apply -f setup/k8s/microservice/deployment/mysql.yaml -n microservice
+   kubectl apply -f setup/k8s/microservice/deployment/create-tables-job.yaml -n microservice
    ```
 
 5. **Deploy services** (set IMAGE_REPO/IMAGE_VERSION first):

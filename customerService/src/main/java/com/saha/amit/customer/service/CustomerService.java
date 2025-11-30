@@ -15,13 +15,13 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -41,6 +41,7 @@ public class CustomerService {
     private static final int SALT_BYTES = 16;
     private static final int ITERATIONS = 65536;
     private static final int KEY_LENGTH = 256;
+    private final Logger logger = LoggerFactory.getLogger(CustomerService.class);
 
     public Flux<CustomerEntity> findAll() {
         return repository.findAll();
@@ -59,6 +60,7 @@ public class CustomerService {
         String hash = CustomerServiceUtil.hashPassword(req.getPassword(), salt);
         e.setPasswordSalt(salt);
         e.setPasswordHash(hash);
+        logger.info("User details for registration: {}", e);
         return repository.save(e);
     }
 
