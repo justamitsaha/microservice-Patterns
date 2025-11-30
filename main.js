@@ -37,7 +37,7 @@ const COMMAND_SECTIONS = [
             "kubectl apply -f setup/k8s/microservice/config-map/ -n microservice": "Apply Config Maps",
             "kubectl apply -f setup/k8s/microservice/deployment/mysql.yaml -n microservice": "Apply MySQL deployment",
             "kubectl apply -f setup/k8s/microservice/deployment/create-tables-job.yaml -n microservice": "Apply DB table creation job",
-            "kubectl wait --for=condition=complete job/create-tables-job -n microservice --timeout=60s": "Wait for DB Job to finish",
+            "kubectl exec -it deploy/mysql -n microservice -- mysql -uappuser -pappPass123 -e \"SHOW TABLES IN amit;\"": "Verify DB tables created",
             "export IMAGE_REPO=justamitsaha": "Set Docker image repo",
             "export IMAGE_VERSION=v1": "Set version tag",
             "envsubst < setup/k8s/microservice/deployment/configservice.yaml | kubectl apply -n microservice -f -": "Apply Config Service",
