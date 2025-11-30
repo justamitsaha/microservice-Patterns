@@ -5,9 +5,9 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn -q -B -e dependency:go-offline
 
-# Build
+# Build (skip tests completely)
 COPY src ./src
-RUN mvn -q -B -e clean package -DskipTests
+RUN mvn -q -B -e clean package -Dmaven.test.skip=true
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
