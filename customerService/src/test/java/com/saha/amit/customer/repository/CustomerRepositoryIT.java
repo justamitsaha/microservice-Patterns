@@ -24,23 +24,24 @@ public class CustomerRepositoryIT {
     void initSchema() {
         db.sql("DROP TABLE IF EXISTS customers").then().block();
         db.sql("""
-                CREATE TABLE customers (
-                  id VARCHAR(36) PRIMARY KEY,
-                  name VARCHAR(255) NOT NULL,
-                  email VARCHAR(255) NOT NULL,
-                  created_at BIGINT NOT NULL,
-                  password_salt VARCHAR(255) NOT NULL,
-                  password_hash VARCHAR(255) NOT NULL
-                )
+                        CREATE TABLE IF NOT EXISTS customers (
+                          id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                          name            VARCHAR(255) NOT NULL,
+                          email           VARCHAR(255) NOT NULL,
+                          created_at      BIGINT NOT NULL,
+                          password_salt   VARCHAR(255) NOT NULL,
+                          password_hash   VARCHAR(255) NOT NULL,
+                          UNIQUE (email)
+                        )
                 """)
                 .then().block();
-        db.sql("CREATE UNIQUE INDEX IF NOT EXISTS uq_email ON customers(email)").then().block();
+        db.sql("CREATE INDEX idx_customers_created_at ON customers (created_at);").then().block();
     }
 
     @Test
     void saveAndFindByEmailWorks() {
         CustomerEntity e = new CustomerEntity();
-        e.setId(java.util.UUID.randomUUID().toString());
+        e.setId(1L);
         e.setName("RepoUser");
         e.setEmail("repo@example.com");
         e.setCreatedAt(Instant.now().toEpochMilli());

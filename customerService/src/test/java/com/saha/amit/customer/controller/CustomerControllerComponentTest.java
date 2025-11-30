@@ -68,14 +68,14 @@ class CustomerControllerComponentTest {
 
     @Test
     void getSuccessReturnsCustomerResponse() {
-        CustomerResponse resp = new CustomerResponse("c1","U","u@e", Instant.now().toEpochMilli(), java.util.List.of());
+        CustomerResponse resp = new CustomerResponse(1L,"U","u@e", Instant.now().toEpochMilli(), java.util.List.of());
         when(service.getWithOrders("c1")).thenReturn(Mono.just(resp));
 
         client.get().uri("/customers/c1")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.id").isEqualTo("c1");
+                .jsonPath("$.id").isEqualTo(1L);
     }
 }
 
