@@ -9,7 +9,7 @@ kubectl get ingressclass
 k get nodes -o wide
 
 bash ./setup/k8s/kafka/install-kafka.sh
-bash ./setup/k8s/observability/install.sh 
+bash ./setup/k8s/observability/install.sh
 kubectl delete namespace <> --wait
 
 

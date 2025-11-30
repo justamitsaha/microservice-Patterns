@@ -11,14 +11,26 @@ data:
   SPRING_R2DBC_USERNAME: "appuser"
   SPRING_R2DBC_PASSWORD: "appPass123"
 
+  # Correct override for spring.kafka.bootstrap-servers to publish/subscribe messages
+  SPRING_KAFKA_BOOTSTRAP: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+
+  # Optional binder override (not required but okay)
+  SPRING_CLOUD_STREAM_KAFKA_BROKERS: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+
+  #This is used only by Spring Cloud Bus
+  SPRING_CLOUD_BUS_KAFKA_BROKERS: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+
   # Kafka topics
-  APP_KAFKA_TOPIC_ORDER: "order.events"
-  APP_KAFKA_TOPIC_ORDER_DLT: "order.events.dlt"
-  APP_KAFKA_TOPIC_ORDER_RETRY: "order.events.retry"
-  APP_KAFKA_TOPIC_ORDER_PROTO: "order.events.proto"
+  APP_KAFKA_TOPIC_ORDER: "order-events"
+  APP_KAFKA_TOPIC_ORDER_DLT: "order-events-dlt"
+  APP_KAFKA_TOPIC_ORDER_RETRY: "order-events-retry"
+  APP_KAFKA_TOPIC_ORDER_PROTO: "order-events-proto"
 
   # Schema Registry
   SCHEMA_REGISTRY_URL: "http://schema-registry.kafka.svc.cluster.local:8081"
+
+  # Swagger UI path
+  SPRINGDOC_SWAGGER_UI_PATH: "/swagger-ui/index.html"
 
   # Custom values
   ORDER_DISCOUNT: "5"

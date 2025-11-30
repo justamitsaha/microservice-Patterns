@@ -80,7 +80,23 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 
 ### File: nginx.conf
 ```nginx
-# Please provide the contents of docker/nginx.conf if available
+server {
+  listen 80;
+  server_name localhost;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # Serve env.js fast (do not cache)
+  location /assets/env.js {
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+  }
+
+  # Try files, if not found serve index.html (SPA fallback)
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
 ```
 
 ### File: webapp-ingress.yaml
@@ -133,7 +149,3 @@ spec:
 **What I've tried:**
 - Added `<base href="/web/">` to index.html
 - Configured ingress with `/web` path prefix
-
-**What's missing:**
-- Contents of `docker/nginx.conf` (needed for diagnosis)
-- Discovery service configuration (if relevant to routing)
