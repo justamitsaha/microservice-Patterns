@@ -5,19 +5,20 @@
 --    you can keep the DEFAULT (uuid()). Otherwise, remove the DEFAULT and let the app
 --    populate the id (e.g., with a UUID) before insert.
 
-use `amit`;
+USE amit;
+
 CREATE TABLE IF NOT EXISTS customers (
-  id              CHAR(36)    NOT NULL PRIMARY KEY DEFAULT (uuid()),
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name            VARCHAR(255) NOT NULL,
   email           VARCHAR(255) NOT NULL,
-  created_at      BIGINT       NOT NULL,
+  created_at      BIGINT NOT NULL,
   password_salt   VARCHAR(255) NOT NULL,
   password_hash   VARCHAR(255) NOT NULL,
-  CONSTRAINT uq_customers_email UNIQUE (email)
+  UNIQUE (email)
 );
 
--- Indexes (in addition to the unique email constraint)
 CREATE INDEX idx_customers_created_at ON customers (created_at);
+
 
 -- If your MySQL version does NOT allow DEFAULT (uuid()), run this instead:
 -- ALTER TABLE customers MODIFY id CHAR(36) NOT NULL PRIMARY KEY;

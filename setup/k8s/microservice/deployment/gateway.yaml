@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: microservice
+  labels:
+    app: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: alloy
+
+      containers:
+        - name: app
+          image: ${IMAGE_REPO}/new-ms-gateway-service:${IMAGE_VERSION}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8085
+              name: http
+          envFrom:
+            - configMapRef:
+                name: microservice-app-settings
+            - configMapRef:
+                name: gateway-service-config
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: gateway
+
+        # -------------------------------
+        # Alloy Sidecar (GKE containerd)
+        # -------------------------------
+        - name: alloy
+          image: grafana/alloy:latest
+          args: ["run", "/etc/alloy/alloy.alloy"]
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: otlp-grpc
+              containerPort: 4317
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+            - name: varlog-pods
+              mountPath: /var/log/pods
+            - name: varlog-containers
+              mountPath: /var/log/containers
+
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: alloy-config-gateway
+
+        # required for GKE log ingestion
+        - name: varlog-pods
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+
+        - name: varlog-containers
+          hostPath:
+            path: /var/log/containers
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: microservice
+  labels:
+    app: gateway
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 8085
+      targetPort: http
+  type: ClusterIP

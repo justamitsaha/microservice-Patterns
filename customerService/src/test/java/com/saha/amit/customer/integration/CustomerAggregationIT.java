@@ -57,20 +57,20 @@ public class CustomerAggregationIT {
     @Test
     void getCustomerAggregatesOrders() {
         CustomerEntity e = new CustomerEntity();
-        e.setId("c-1"); e.setName("T"); e.setEmail("t@e.com"); e.setCreatedAt(System.currentTimeMillis());
+        e.setId(1L); e.setName("T"); e.setEmail("t@e.com"); e.setCreatedAt(System.currentTimeMillis());
         when(repository.findById("c-1")).thenReturn(Mono.just(e));
 
         mockOrders.enqueue(new MockResponse()
                 .setResponseCode(200)
-                .setBody("[ { \"orderId\":\"o-1\",\"customerId\":\"c-1\",\"amount\":42.0,\"status\":\"PLACED\" } ]")
+                .setBody("[ { \"orderId\":\"1\",\"customerId\":\"c-1\",\"amount\":42.0,\"status\":\"PLACED\" } ]")
                 .addHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE));
 
-        client.get().uri("/customers/{id}", "c-1")
+        client.get().uri("/customers/{id}", "1")
                 .exchange()
                 .expectStatus().is2xxSuccessful()
                 .expectBody()
-                .jsonPath("$.id").isEqualTo("c-1")
-                .jsonPath("$.orders[0].orderId").isEqualTo("o-1");
+                .jsonPath("$.id").isEqualTo("1")
+                .jsonPath("$.orders[0].orderId").isEqualTo("1");
     }
 }
 

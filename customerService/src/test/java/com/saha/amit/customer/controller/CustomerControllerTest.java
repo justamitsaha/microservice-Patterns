@@ -35,7 +35,7 @@ public class CustomerControllerTest {
     @Test
     void registerReturnsCustomer() {
         CustomerEntity e = new CustomerEntity();
-        e.setId("id-1"); e.setName("Alice"); e.setEmail("alice@example.com");
+        e.setId(1L); e.setName("Alice"); e.setEmail("alice@example.com");
         when(service.create(any())).thenReturn(Mono.just(e));
 
         client.post().uri("/customers")
@@ -44,7 +44,7 @@ public class CustomerControllerTest {
                 .exchange()
                 .expectStatus().is2xxSuccessful()
                 .expectBody()
-                .jsonPath("$.id").isEqualTo("id-1")
+                .jsonPath("$.id").isEqualTo(1L)
                 .jsonPath("$.name").isEqualTo("Alice");
 
         verify(service).create(any(CustomerRequest.class));
@@ -67,14 +67,14 @@ public class CustomerControllerTest {
         String salt = java.util.Base64.getEncoder().encodeToString("salt-123456789012".getBytes());
         String hash = CustomerServiceUtil.hashPassword("x", salt);
         CustomerEntity user = new CustomerEntity();
-        user.setId("u1");
+        user.setId(1L);
         user.setEmail("a@b.com");
         user.setPasswordSalt(salt);
         user.setPasswordHash(hash);
 
         when(repository.findByEmail("a@b.com")).thenReturn(Mono.just(user));
-        when(util.generateAccessToken("u1", "a@b.com")).thenReturn("token");
-        when(util.generateRefreshToken("u1", "a@b.com")).thenReturn("rtoken");
+        when(util.generateAccessToken("1", "a@b.com")).thenReturn("token");
+        when(util.generateRefreshToken("1", "a@b.com")).thenReturn("rtoken");
         // Validate token returns minimal Claims
         io.jsonwebtoken.impl.DefaultClaims claims = new io.jsonwebtoken.impl.DefaultClaims();
         claims.setSubject("u1");

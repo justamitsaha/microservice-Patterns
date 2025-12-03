@@ -1,52 +1,99 @@
-Microservice Stack on GKE (namespace: microservice)
+# Microservice Stack on GKE (namespace: microservice)
 
-Overview
-- Deploys Spring Boot microservices and a web app:
-  - customerService (Spring Boot)
-  - reactiveOrderService (Spring Boot)
-  - discoveryService (Eureka server)
-  - gatewayService (API gateway)
-  - configService (Spring Cloud Config Server)
-  - webapp (frontend)
-- Adds MySQL (single instance) for customerService and reactiveOrderService
-- Adds Alloy sidecar to each Spring Boot Pod to forward traces/logs to your observability stack (Tempo/Loki)
-- Exposes services via NGINX Ingress with simple path routing
+## Overview
+Deploys Spring Boot microservices and a web app:
+- **customerService** (Spring Boot)
+- **order** (Spring Boot)
+- **discoveryService** (Eureka server)
+- **gatewayService** (API gateway)
+- **configService** (Spring Cloud Config Server)
+- **webapp** (frontend)
 
-Prerequisites
-- Build and push container images for each app to a registry you can pull from GKE.
-- Observability namespace is installed (Tempo/Loki/Prometheus/Grafana).
-- NGINX Ingress controller is running (your setup-gke.sh installs it).
+Additional components:
+- MySQL (single instance) for customerService and order
+- Alloy sidecar in each Spring Boot Pod to forward traces/logs to your observability stack (Tempo/Loki)
+- NGINX Ingress for external access with path-based routing
 
-Install
-- Set an image prefix for your registry (examples below). Then run:
-  - `IMAGE_PREFIX=gcr.io/<project>/microservices bash setup/k8s/microservice/install.sh`
-  - or `IMAGE_PREFIX=<your-dockerhub-username> bash setup/k8s/microservice/install.sh`
+## Prerequisites
+- Build and push container images for each app to a registry accessible from GKE
+- Observability set up installed (Tempo/Loki/Prometheus/Grafana)
+- NGINX Ingress controller running (installed via `setup-gke.sh`)
 
-Uninstall
-- Run: `bash setup/k8s/microservice/uninstall.sh`
-- Optionally deletes the `microservice` namespace when prompted.
+## Install (step-by-step)
 
-Ingress paths (example)
-- `/` → webapp (port 80)
-- `/api/customer` → customerService (8080)
-- `/api/order` → reactiveOrderService (8080)
-- `/gateway` → gatewayService (8080)
+
+Run these commands from repo root in order:
+
+1. **Create namespace**:
+   ```bash
+   kubectl create namespace microservice 2>/dev/null || true
+   ```
+
+2. **Apply network policy and Kafka topic**:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/kafka-allow-from-microservice.yaml
+   kubectl apply -f setup/k8s/microservice/config-bus-topic.yaml
+   ```
+
+3. **Create shared ConfigMaps**:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/config-map/ -n microservice
+   ```
+
+4. **Deploy MySQL database**:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/deployment/mysql.yaml -n microservice
+   kubectl apply -f setup/k8s/microservice/deployment/create-tables-job.yaml -n microservice
+   ```
+
+5. **Deploy services** (set IMAGE_REPO/IMAGE_VERSION first):
+   ```bash
+   export IMAGE_REPO=justamitsaha
+   export IMAGE_VERSION=v1
+   envsubst < setup/k8s/microservice/deployment/configservice.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/discovery.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/gateway.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/customer.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/reactive-order.yaml | kubectl apply -n microservice -f -
+   envsubst < setup/k8s/microservice/deployment/webapp.yaml | kubectl apply -n microservice -f -
+   ```
+
+6. **Create Ingress**:
+   ```bash
+   kubectl apply -f setup/k8s/microservice/ingress.yaml -n microservice
+   ```
+
+7. **Verify deployment** following steps 4-5 from the Install section above.
+
+## Uninstall
+```bash
+bash setup/k8s/microservice/uninstall.sh
+```
+You'll be prompted whether to delete the `microservice` namespace.
+
+## Ingress Paths
+- `/web` → webapp (port 80)
+- `/api/customer` → customerService (8081)
+- `/api/order` → order (8080)
+- `/gateway` → gatewayService (8085)
 - `/eureka` → discoveryService (8761)
 - `/config` → configService (8888)
 
-Config Server and Profiles
-- Apps are started with `SPRING_PROFILES_ACTIVE=gcp`.
+## Config Server and Profiles
+- Apps start with `SPRING_PROFILES_ACTIVE=gcp` (set via ConfigMap environment variables)
 - Config Server URI: `http://configservice.microservice.svc.cluster.local:8888`
-- The install script creates a ConfigMap from `configService/src/main/resources/config`.
+- Configuration sourced from `configmap-app-settings.yaml` and `app-config` ConfigMap (created from configService resources)
 
-Tracing/Logs Sidecar (Alloy)
-- Alloy sidecar exposes OTLP on localhost:4317/4318; apps export OTLP to `http://localhost:4318`.
-- Alloy forwards traces to `tempo.observability.svc.cluster.local:4317` and logs to `loki.observability.svc.cluster.local:3100`.
+## Tracing/Logs Sidecar (Alloy)
+- Alloy sidecar exposes OTLP on `localhost:4317/4318`
+- Apps export OTLP to `http://localhost:4318`
+- Alloy forwards:
+  - Traces to `tempo.microservice.svc.cluster.local:4317`
+  - Logs to `loki.microservice.svc.cluster.local:3100`
 
-Prometheus Metrics
-- Each Deployment has annotations for Prometheus to scrape `/actuator/prometheus` on container port 8080.
+## Prometheus Metrics
+Each Deployment includes annotations for Prometheus to scrape `/actuator/prometheus` on the service's container port.
 
-Images
-- The manifests use `${IMAGE_PREFIX}` with reasonable image names, e.g. `${IMAGE_PREFIX}/customer-service:latest`.
-- Override with `IMAGE_PREFIX=...` when running install.sh.
-
+## Container Images
+- Manifests use `$IMAGE_REPO/new-ms-<service>:$IMAGE_VERSION` pattern (matches `build-and-push.sh` outputs)
+- Override with: `IMAGE_REPO=<repo> IMAGE_VERSION=<tag>` when running install.sh

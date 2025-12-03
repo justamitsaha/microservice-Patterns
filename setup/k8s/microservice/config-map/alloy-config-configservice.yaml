@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config-configservice
+  namespace: microservice
+data:
+  alloy.alloy: |
+    local.file_match "configservice" {
+      path_targets = [
+        { __path__ = "/var/log/pods/microservice_configservice-*/app/*.log", app = "configservice", namespace = "microservice" },
+      ]
+    }
+
+    loki.source.file "pods" {
+      targets = local.file_match.configservice.targets
+      forward_to = [loki.write.configservice.receiver]
+    }
+
+    loki.write "configservice" {
+      endpoint {
+        url = "http://loki.microservice.svc.cluster.local:3100/loki/api/v1/push"
+        tenant_id = "microservice"
+      }
+    }
+
+    otelcol.receiver.otlp "default" {
+      grpc { endpoint = "0.0.0.0:4317" }
+      http { endpoint = "0.0.0.0:4318" }
+      output {
+        traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    otelcol.processor.batch "default" {
+      output {
+        traces = [otelcol.exporter.otlp.tempo.input]
+      }
+    }
+
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.microservice.svc.cluster.local:4317"
+        tls { insecure = true }
+      }
+    }

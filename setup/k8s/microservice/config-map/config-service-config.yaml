@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configservice-config
+  namespace: microservice
+data:
+  # Application identity
+  SPRING_APP_NAME: "config-service"
+  SERVER_PORT: "8888"
+
+  # Git Repo for Config Server
+  CONFIG_GIT_URI: "https://github.com/justamitsaha/configurationServer.git"
+  CONFIG_GIT_TIMEOUT: "5"
+  CONFIG_GIT_FORCE_PULL: "true"
+  CONFIG_GIT_CLONE_ON_START: "true"
+  CONFIG_GIT_BRANCH: "main"
+  CONFIG_SERVER_ENABLED: "false"
+
+  # Encryption Key
+  ENCRYPT_KEY: "45D81EC1EF61DF9AD8D3E5BB397F9"

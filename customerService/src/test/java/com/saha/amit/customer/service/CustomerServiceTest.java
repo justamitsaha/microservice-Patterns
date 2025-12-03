@@ -62,7 +62,7 @@ public class CustomerServiceTest {
     @Test
     void updateChangesPasswordWhenProvided() {
         CustomerEntity existing = new CustomerEntity();
-        existing.setId("id-1");
+        existing.setId(1L);
         existing.setName("Bob");
         existing.setEmail("bob@example.com");
         existing.setPasswordSalt("oldSalt");
@@ -76,7 +76,7 @@ public class CustomerServiceTest {
         req.setEmail("bob@example.com");
         req.setPassword("newPass");
 
-        StepVerifier.create(service.update("id-1", req))
+        StepVerifier.create(service.update("1", req))
                 .assertNext(updated -> {
                     assertThat(updated.getPasswordSalt()).isNotEqualTo("oldSalt");
                     assertThat(updated.getPasswordHash()).isNotEqualTo("oldHash");

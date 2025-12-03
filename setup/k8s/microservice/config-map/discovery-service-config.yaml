@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: discovery-service-config
+  namespace: microservice
+data:
+  SPRING_APP_NAME: "discovery-service"
+  SERVER_PORT: "8761"
+
+  # Eureka server behavior
+  EUREKA_REGISTER_WITH_EUREKA: "false"
+  EUREKA_FETCH_REGISTRY: "false"
+  EUREKA_WAIT_TIME: "0"

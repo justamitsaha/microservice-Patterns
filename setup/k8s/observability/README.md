@@ -30,9 +30,9 @@ Verify
 - Grafana access (via Ingress):
   - `http(s)://<your-ingress-host>/grafana` (admin/admin by default)
 - In‑cluster endpoints:
-  - Loki: `http://loki.observability.svc.cluster.local:3100`
-  - Tempo: `http://tempo.observability.svc.cluster.local:3200` (OTLP: 4317 gRPC, 4318 HTTP)
-  - Prometheus: `http://prometheus.observability.svc.cluster.local:9090`
+- Loki: `http://loki.microservice.svc.cluster.local:3100`
+- Tempo: `http://tempo.microservice.svc.cluster.local:3200` (OTLP: 4317 gRPC, 4318 HTTP)
+- Prometheus: `http://prometheus.microservice.svc.cluster.local:9090`
 
 Sending Data From Spring Boot
 - Metrics (Prometheus): add pod annotations on your app Deployment in its namespace:
@@ -40,7 +40,7 @@ Sending Data From Spring Boot
   - `prometheus.io/port: "8080"`
   - `prometheus.io/path: "/actuator/prometheus"`
 - Traces (OTLP): export OTLP to an Alloy sidecar running in the same pod, or directly to Tempo.
-  - Direct to Tempo (simple): set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://tempo.observability.svc.cluster.local:4318` and `OTEL_TRACES_EXPORTER=otlp` in your app container.
+- Direct to Tempo (simple): set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://tempo.microservice.svc.cluster.local:4318` and `OTEL_TRACES_EXPORTER=otlp` in your app container.
   - Sidecar Alloy (recommended when you add your app manifests): see template `setup/k8s/observability/sidecar-alloy-template.yaml` and copy it into your app namespace.
 - Logs: for learning, you can start by exporting logs via Alloy sidecar to Loki, or keep basic stdout logs and view them in `kubectl logs`.
 

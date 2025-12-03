@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery
+  namespace: microservice
+  labels:
+    app: discovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery
+  template:
+    metadata:
+      labels:
+        app: discovery
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8761"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: app
+          image: ${IMAGE_REPO}/new-ms-discovery-service:${IMAGE_VERSION}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8761
+              name: http
+
+          # -------------------------------------
+          # Load common config (Kafka, Eureka base, logging, tracing)
+          # -------------------------------------
+          envFrom:
+            - configMapRef:
+                name: microservice-app-settings
+
+            # -------------------------------------
+            # Load discovery-specific config
+            # -------------------------------------
+            - configMapRef:
+                name: discovery-service-config
+
+          env:
+            # Identity used by telemetry (SAFE to hardcode)
+            - name: OTEL_SERVICE_NAME
+              value: discovery
+
+        # -------------------------------------
+        # Alloy Sidecar
+        # -------------------------------------
+        - name: alloy
+          image: grafana/alloy:latest
+          args:
+            [
+              "run",
+              "--stability.level=public-preview",
+              "/etc/alloy/alloy.alloy",
+            ]
+          env:
+            - name: ALLOY_ENABLE_FEATURES
+              value: flow
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: otlp-grpc
+              containerPort: 4317
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+            - name: varlog
+              mountPath: /var/log
+
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: alloy-config-discovery
+        - name: varlog
+          hostPath:
+            path: /var/log
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery
+  namespace: microservice
+  labels:
+    app: discovery
+spec:
+  selector:
+    app: discovery
+  ports:
+    - name: http
+      port: 8761
+      targetPort: http
+  type: ClusterIP

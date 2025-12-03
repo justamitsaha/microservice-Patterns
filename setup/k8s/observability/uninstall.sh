@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NS=${NAMESPACE:-observability}
+NS=${NAMESPACE:-microservice}
 
 echo "Namespace: ${NS}"
 echo "Deleting Ingress..."

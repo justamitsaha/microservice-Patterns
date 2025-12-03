@@ -1,20 +1,40 @@
 
 gcloud container clusters delete amit-cluster --zone us-central1-a
-kubectl delete namespace kafka --wait
+bash ./setup/k8s/setup-gke.sh 
+#verify
+kubectl get svc -A | grep LoadBalancer
+kubectl get pods -A | grep ingress
+kubectl get svc -n ingress-nginx
+kubectl get ingressclass
+k get nodes -o wide
+
+bash ./setup/k8s/kafka/install-kafka.sh
+bash ./setup/k8s/observability/install.sh
+kubectl delete namespace <> --wait
 
 
 kubectl get ns
-kubectl create namespace observability
+kubectl create namespace <>
 
-kubectl get pods -n observability
-kubectl get services -n observability
-kubectl get deployments -n observability
-kubectl get configmaps -n observability
-kubectl get pods,services,deployments -n observability
-kubectl get all -n observability
+kubectl get pods -n <>
+kubectl get services -n <>
+kubectl get deployments -n <>
+kubectl get configmaps -n <>
+kubectl get pods,services,deployments -n <>
+kubectl get all -n <>
 
 
-kubectl get svc -A | grep LoadBalancer
-kubectl get pods -A | grep ingress
-kubectl get ingressclass
+kubectl logs deployment/configservice -n microservice
+
+#When pod not started like ContainerCreating  status
+kubectl describe pod configservice-567d66cdfd-jc5t6 -n microservice
+kubectl get pod configservice-567d66cdfd-jc5t6 -n microservice -o wide
+
+#if pod starting ten getting error like CrashLoopBackOff
+kubectl logs service/configservice -n microservice
+
+
+
+#check config map
+kubectl get configmap -n microservice
 

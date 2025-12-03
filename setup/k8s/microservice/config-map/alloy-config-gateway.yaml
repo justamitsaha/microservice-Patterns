@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config-gateway
+  namespace: microservice
+data:
+  alloy.alloy: |
+    local.file_match "gateway" {
+      path_targets = [
+        { __path__ = "/var/log/pods/microservice_gateway-*/app/*.log", app = "gateway", namespace = "microservice" },
+      ]
+    }
+
+    loki.source.file "pods" {
+      targets = local.file_match.gateway.targets
+      forward_to = [loki.write.gateway.receiver]
+    }
+
+    loki.write "gateway" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+        tenant_id = "microservice"
+      }
+    }
+
+    otelcol.receiver.otlp "default" {
+      grpc { endpoint = "0.0.0.0:4317" }
+      http { endpoint = "0.0.0.0:4318" }
+      output {
+        traces = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    otelcol.processor.batch "default" {
+      output {
+        traces = [otelcol.exporter.otlp.tempo.input]
+      }
+    }
+
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo:4317"
+        tls { insecure = true }
+      }
+    }

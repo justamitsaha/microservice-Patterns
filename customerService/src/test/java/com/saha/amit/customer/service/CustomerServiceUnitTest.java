@@ -64,7 +64,7 @@ class CustomerServiceUnitTest {
     @Test
     void updateWithoutPasswordKeepsExistingHash() {
         CustomerEntity existing = new CustomerEntity();
-        existing.setId("id-2");
+        existing.setId(1L);
         existing.setName("N");
         existing.setEmail("e@x");
         existing.setPasswordSalt("S");
@@ -77,7 +77,7 @@ class CustomerServiceUnitTest {
         req.setEmail("new@x");
         // no password provided
 
-        StepVerifier.create(service.update("id-2", req))
+        StepVerifier.create(service.update("1", req))
                 .assertNext(updated -> {
                     assertThat(updated.getPasswordSalt()).isEqualTo("S");
                     assertThat(updated.getPasswordHash()).isEqualTo("H");
@@ -90,7 +90,7 @@ class CustomerServiceUnitTest {
     @Test
     void getWithOrdersFallsBackOnDownstreamFailure() {
         CustomerEntity e = new CustomerEntity();
-        e.setId("c1");
+        e.setId(1l);
         e.setName("User");
         e.setEmail("u@e.com");
         e.setCreatedAt(Instant.now().toEpochMilli());
@@ -99,11 +99,11 @@ class CustomerServiceUnitTest {
         // Simulate 500 from order service
         server.enqueue(new MockResponse().setResponseCode(500));
 
-        Mono<CustomerResponse> mono = service.getWithOrders("c1");
+        Mono<CustomerResponse> mono = service.getWithOrders("1");
 
         StepVerifier.create(mono)
                 .assertNext(resp -> {
-                    assertThat(resp.getId()).isEqualTo("c1");
+                    assertThat(resp.getId()).isEqualTo("1");
                     List<OrderResponse> orders = resp.getOrders();
                     assertThat(orders).hasSize(1);
                     assertThat(orders.get(0).getStatus())
