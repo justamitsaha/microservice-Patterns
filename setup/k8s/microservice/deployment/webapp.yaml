@@ -23,7 +23,7 @@ spec:
             - name: API_BASE_URL
               value: "http://35.226.236.202/gateway"
             - name: APP_THEME_COLOR
-              value: "#f0758a"
+              value: "#32a852"
 ---
 apiVersion: v1
 kind: Service
