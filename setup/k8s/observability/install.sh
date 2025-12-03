@@ -7,7 +7,7 @@ set -euo pipefail
 # - Exposes Grafana via Ingress (path /grafana)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NS=${NAMESPACE:-observability}
+NS=${NAMESPACE:-microservice}
 
 echo "Using namespace: ${NS}"
 kubectl get ns "${NS}" >/dev/null 2>&1 || kubectl create namespace "${NS}"

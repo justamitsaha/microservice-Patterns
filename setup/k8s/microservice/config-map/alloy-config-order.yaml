@@ -1,20 +1,25 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: alloy-config
+  name: alloy-config-order
   namespace: microservice
 data:
   alloy.alloy: |
-    loki.source.file "pods" {
-      targets = [
-        { __path__ = "/var/log/pods/*/*/*.log" },
+    local.file_match "order" {
+      path_targets = [
+        { __path__ = "/var/log/pods/microservice_order-*/app/*.log", app = "order", namespace = "microservice" },
       ]
-      forward_to = [loki.write.default.receiver]
     }
 
-    loki.write "default" {
+    loki.source.file "pods" {
+      targets = local.file_match.order.targets
+      forward_to = [loki.write.order.receiver]
+    }
+
+    loki.write "order" {
       endpoint {
-        url = "http://loki:3100/loki/api/v1/push"
+        url = "http://loki.microservice.svc.cluster.local:3100/loki/api/v1/push"
+        tenant_id = "microservice"
       }
     }
 
@@ -34,7 +39,7 @@ data:
 
     otelcol.exporter.otlp "tempo" {
       client {
-        endpoint = "tempo:4317"
+        endpoint = "tempo.microservice.svc.cluster.local:4317"
         tls { insecure = true }
       }
     }

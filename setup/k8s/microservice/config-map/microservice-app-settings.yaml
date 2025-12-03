@@ -29,7 +29,7 @@ data:
   # ============================
   # Observability (Tracing)
   # ============================
-  OTLP_ENDPOINT: "http://tempo.observability.svc.cluster.local:4318/v1/traces"
+  OTLP_ENDPOINT: "http://tempo.microservice.svc.cluster.local:4318/v1/traces"
   TRACING_SAMPLING: "1.0"
 
   # ============================

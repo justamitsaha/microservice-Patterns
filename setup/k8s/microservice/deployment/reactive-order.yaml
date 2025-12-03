@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: reactiveorderservice
+  name: order
   namespace: microservice
   labels:
-    app: reactiveorderservice
+    app: order
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: reactiveorderservice
+      app: order
   template:
     metadata:
       labels:
-        app: reactiveorderservice
+        app: order
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
@@ -55,7 +55,7 @@ spec:
               value: "8080"
 
             - name: OTEL_SERVICE_NAME
-              value: reactiveorderservice
+              value: order
 
         # Alloy sidecar
         - name: alloy
@@ -83,7 +83,7 @@ spec:
       volumes:
         - name: alloy-config
           configMap:
-            name: alloy-config
+            name: alloy-config-order
 
         - name: varlog
           hostPath:
@@ -94,13 +94,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: reactiveorderservice
+  name: order
   namespace: microservice
   labels:
-    app: reactiveorderservice
+    app: order
 spec:
   selector:
-    app: reactiveorderservice
+    app: order
   ports:
     - name: http
       port: 8080

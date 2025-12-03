@@ -7,7 +7,7 @@ data:
   alloy.alloy: |
     loki.source.kubernetes_logs "pods" {}
     loki.write "loki" {
-      endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
+      endpoint { url = "http://loki.microservice.svc.cluster.local:3100/loki/api/v1/push" }
     }
 
     otelcol.receiver.otlp "default" {
@@ -16,7 +16,7 @@ data:
     }
     otelcol.exporter.otlp "tempo" {
       client {
-        endpoint = "tempo.observability.svc.cluster.local:4317"
+        endpoint = "tempo.microservice.svc.cluster.local:4317"
         insecure = true
       }
     }
@@ -87,4 +87,3 @@ spec:
       hostPath:
         path: /var/log
         type: Directory
-

@@ -19,7 +19,7 @@ const URL_MAP = {
     "Order Service": "/api/order/actuator/health",
     "Order Swagger": "/api/order/swagger-ui/index.html",
     "Web App": "/web",
-    "Grafana": "http://35.226.236.202/grafana/login"
+    "Grafana": "/grafana/login"
 };
 
 /* ===========================================

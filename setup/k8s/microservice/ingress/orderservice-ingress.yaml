@@ -16,6 +16,6 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: reactiveorderservice
+                name: order
                 port:
                   number: 8080

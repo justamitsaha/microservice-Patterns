@@ -73,7 +73,7 @@ spec:
       volumes:
         - name: alloy-config
           configMap:
-            name: alloy-config
+            name: alloy-config-discovery
         - name: varlog
           hostPath:
             path: /var/log
