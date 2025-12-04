@@ -126,6 +126,18 @@ services:
     ports:
       - "3200:3200"   # Tempo HTTP API (used by Grafana Tempo datasource)
 
+  # 📜 Loki - Centralized log store for Grafana Explore
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki/config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
   # ⚡ Redis - In-memory data store used for caching and rate-limiting in gateway services
   redis:
     image: redis:7-alpine
@@ -134,6 +146,8 @@ services:
       - "6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no"]
 
+volumes:
+  loki-data:
 
 
 #  discovery-service:
