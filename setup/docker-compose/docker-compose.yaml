@@ -159,22 +159,10 @@ services:
     depends_on:
       - loki
 
-  # 🔎 Discovery Service (Eureka)
-  discovery-service:
-    build: ../discoveryService
-    container_name: discovery-service
-    restart: unless-stopped
-    environment:
-      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - SPRING_PROFILES_ACTIVE=docker
-    ports:
-      - "8761:8761"
-    depends_on:
-      - otel-collector
-
   # 📚 Config Service
   config-service:
-    build: ../configService
+#    build: ../configService
+    image: justamitsaha/new-ms-config-service:v1
     container_name: config-service
     restart: unless-stopped
     environment:
@@ -187,12 +175,52 @@ services:
     volumes:
       - ../configService/src/main/resources/config-repo:/config-repo:ro
     depends_on:
-      - discovery-service
       - otel-collector
+      - kafka1
+
+  # 🔎 Discovery Service (Eureka)
+  discovery-service:
+#    build: ../discoveryService
+    image: justamitsaha/new-ms-discovery-service:v1
+    container_name: discovery-service
+    restart: unless-stopped
+    environment:
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
+      - SPRING_PROFILES_ACTIVE=docker
+    ports:
+      - "8761:8761"
+    depends_on:
+      - otel-collector
+      - config-service
+      - kafka1
+
+  # 🚪 API Gateway
+  gateway-service:
+#    build: ../gatewayService
+    image: justamitsaha/new-ms-gateway-service:v1
+    container_name: gateway-service
+    restart: unless-stopped
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
+      - APP_CUSTOMER-SERVICE_BASE-URL=http://customer-service
+      - APP_ORDER-SERVICE_BASE-URL=http://order-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - discovery-service
+      - config-service
+      - otel-collector
+      - redis
+      - kafka1
+
+
 
   # 🧾 Order Service (reactive)
   order-service:
-    build: ../reactiveOrderService
+#    build: ../reactiveOrderService
+    image: justamitsaha/new-ms-reactive-order-service:v1
     container_name: order-service
     restart: unless-stopped
     environment:
@@ -209,7 +237,8 @@ services:
 
   # 👥 Customer Service
   customer-service:
-    build: ../customerService
+#    build: ../customerService
+    image: justamitsaha/new-ms-customer-service:v1
     container_name: customer-service
     restart: unless-stopped
     environment:
@@ -220,31 +249,21 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - order-service
       - config-service
       - discovery-service
       - otel-collector
+      - kafka1
 
-  # 🚪 API Gateway
-  gateway-service:
-    build: ../gatewayService
-    container_name: gateway-service
+  web-app:
+    image: justamitsaha/new-ms-web-app:v1
+    container_name: web-app
     restart: unless-stopped
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:8888
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
-      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - APP_CUSTOMER-SERVICE_BASE-URL=http://customer-service
-      - APP_ORDER-SERVICE_BASE-URL=http://order-service
+      - API_BASE_URL=http://gateway-service:8085
+      - APP_THEME_COLOR=#32a852
     ports:
-      - "8085:8085"
-    depends_on:
-      - customer-service
-      - order-service
-      - discovery-service
-      - config-service
-      - otel-collector
-      - redis
+      - "80:80"
+
 
 volumes:
   loki-data:
