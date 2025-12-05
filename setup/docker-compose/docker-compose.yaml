@@ -255,7 +255,7 @@ services:
       - kafka1
 
   web-app:
-    image: justamitsaha/new-ms-web-app:v1
+    image: justamitsaha/new-ms-webapp:v1
     container_name: web-app
     restart: unless-stopped
     environment:
