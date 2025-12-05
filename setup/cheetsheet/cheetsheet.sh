@@ -3,7 +3,7 @@ docker compose up -d --build  #After modifying docker-compose.yml
 docker compose up -d #Start containers in detached mode
 docker compose down #Stop and remove containers, networks, images, and volumes created by docker-compose up
 docker compose ps #List containers
-docker compose logs -f kafka1 #Follow logs of a specific container
+docker compose logs -f gateway-service #Follow logs of a specific container
 docker exec -it kafka1 bash #Access the bash shell of a specific container
 docker stats #Display a live stream of container resource usage statistics
 docker compose -f docker-compose-observability.yaml down #Stop and remove containers for a specific compose file

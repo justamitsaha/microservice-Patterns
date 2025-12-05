@@ -21,6 +21,15 @@ services:
       - "9092:9092"
     volumes:
       - ./kafka-config/kafka1.properties:/etc/kafka/server.properties
+    environment: # Explicitly define listeners for reliable Docker networking
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Internal listener for inter-broker communication and other services (e.g., topic creator)
+      KAFKA_LISTENERS: CLIENT://kafka1:9092
+      # Listener for outside access (mapped via ports section)
+      KAFKA_ADVERTISED_LISTENERS: CLIENT://kafka1:9092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: CLIENT
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
   # 🦜 Kafka Broker 2 - Second broker to ensure replication and high availability
@@ -33,6 +42,7 @@ services:
       - "9093:9093"
     volumes:
       - ./kafka-config/kafka2.properties:/etc/kafka/server.properties
+    # NOTE: You should ideally add environment variables here too for robustness, similar to kafka1
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
   # 🦜 Kafka Broker 3 - Third broker completing the Kafka cluster quorum
@@ -45,7 +55,26 @@ services:
       - "9094:9094"
     volumes:
       - ./kafka-config/kafka3.properties:/etc/kafka/server.properties
+    # NOTE: You should ideally add environment variables here too for robustness, similar to kafka1
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
+
+  # 🆕 Kafka Topic Creator - Runs a script to create necessary Kafka topics on startup
+  kafka-topic-creator:
+    image: confluentinc/cp-kafka:7.4.0 # Use a Kafka client image
+    container_name: kafka-topic-creator
+    volumes:
+      # Mount the script so the container can execute it
+      - ./create-topics.sh:/usr/bin/create-topics.sh
+    depends_on:
+      # Wait for all brokers to be running before attempting to create topics
+      - kafka1
+      - kafka2
+      - kafka3
+    # Use the script as the command/entrypoint
+    command: ["/usr/bin/create-topics.sh"]
+    # Ensure it only runs once and then exits
+    restart: "no"
+
 
   # 📜 Schema Registry - Stores and validates Avro/JSON schemas for Kafka message compatibility
   schema-registry:
@@ -60,6 +89,7 @@ services:
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      # Note: The ports 19092, 19093, 19094 need to be configured inside your server.properties files
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka1:19092,PLAINTEXT://kafka2:19093,PLAINTEXT://kafka3:19094"
 
   # 📡 OpenTelemetry Collector - Collects traces and metrics from microservices and forwards to Tempo/Prometheus
@@ -161,7 +191,7 @@ services:
 
   # 📚 Config Service
   config-service:
-#    build: ../configService
+    #    build: ../configService
     image: justamitsaha/new-ms-config-service:v1
     container_name: config-service
     restart: unless-stopped
@@ -177,10 +207,11 @@ services:
     depends_on:
       - otel-collector
       - kafka1
+      - kafka-topic-creator # Wait until topics are created
 
   # 🔎 Discovery Service (Eureka)
   discovery-service:
-#    build: ../discoveryService
+    #    build: ../discoveryService
     image: justamitsaha/new-ms-discovery-service:v1
     container_name: discovery-service
     restart: unless-stopped
@@ -193,10 +224,11 @@ services:
       - otel-collector
       - config-service
       - kafka1
+      - kafka-topic-creator # Wait until topics are created
 
   # 🚪 API Gateway
   gateway-service:
-#    build: ../gatewayService
+    #    build: ../gatewayService
     image: justamitsaha/new-ms-gateway-service:v1
     container_name: gateway-service
     restart: unless-stopped
@@ -214,12 +246,12 @@ services:
       - otel-collector
       - redis
       - kafka1
-
+      - kafka-topic-creator # Wait until topics are created
 
 
   # 🧾 Order Service (reactive)
   order-service:
-#    build: ../reactiveOrderService
+    #    build: ../reactiveOrderService
     image: justamitsaha/new-ms-reactive-order-service:v1
     container_name: order-service
     restart: unless-stopped
@@ -234,10 +266,11 @@ services:
       - discovery-service
       - otel-collector
       - kafka1
+      - kafka-topic-creator # Wait until topics are created
 
   # 👥 Customer Service
   customer-service:
-#    build: ../customerService
+    #    build: ../customerService
     image: justamitsaha/new-ms-customer-service:v1
     container_name: customer-service
     restart: unless-stopped
@@ -253,6 +286,7 @@ services:
       - discovery-service
       - otel-collector
       - kafka1
+      - kafka-topic-creator # Wait until topics are created
 
   web-app:
     image: justamitsaha/new-ms-webapp:v1
@@ -263,7 +297,8 @@ services:
       - APP_THEME_COLOR=#32a852
     ports:
       - "80:80"
-
+    depends_on:
+      - gateway-service # Ensure the gateway is up before the front end
 
 volumes:
   loki-data:
