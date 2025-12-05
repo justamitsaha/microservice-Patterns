@@ -1,3 +1,17 @@
+###### Important Docker Commands
+docker compose up -d --build  #After modifying docker-compose.yml
+docker compose up -d #Start containers in detached mode
+docker compose down #Stop and remove containers, networks, images, and volumes created by docker-compose up
+docker compose ps #List containers
+docker compose logs -f kafka1 #Follow logs of a specific container
+docker exec -it kafka1 bash #Access the bash shell of a specific container
+docker stats #Display a live stream of container resource usage statistics
+docker compose -f docker-compose-observability.yaml down #Stop and remove containers for a specific compose file
+docker compose -f docker-compose-observability.yaml up -d #Start containers for a specific
+docker compose up -d --force-recreate --pull always web-app #Recreate containers and pull the latest images for web-app service
+
+
+######Kafka Topic Management
 #1. Create topics
 docker exec -it kafka1 kafka-topics \
   --create \

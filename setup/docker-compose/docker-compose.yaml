@@ -259,7 +259,7 @@ services:
     container_name: web-app
     restart: unless-stopped
     environment:
-      - API_BASE_URL=http://gateway-service:8085
+      - API_BASE_URL=http://localhost:8085
       - APP_THEME_COLOR=#32a852
     ports:
       - "80:80"
