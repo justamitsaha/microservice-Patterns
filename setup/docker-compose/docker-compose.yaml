@@ -247,7 +247,7 @@ services:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
       - APP_ORDER-SERVICE_BASE-URL=http://order-service
     ports:
-      - "8081:8081"
+      - "8082:8081" # Host port 8082 -> Container port 8081
     depends_on:
       - config-service
       - discovery-service
