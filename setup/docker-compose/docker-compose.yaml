@@ -178,10 +178,7 @@ services:
     container_name: configAPI
     restart: unless-stopped
     environment:
-      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - SPRING_PROFILES_ACTIVE=native
-      - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS=file:/config-repo
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
+      - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
     ports:
       - "8888:8888"
     volumes:
