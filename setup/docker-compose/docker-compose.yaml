@@ -189,7 +189,6 @@ services:
     depends_on:
       - otel-collector
       - kafka1
-      - kafka-topic-creator # Wait until topics are created
 
   # 🔎 Discovery Service (Eureka)
   discoveryAPI:
@@ -206,7 +205,6 @@ services:
       - otel-collector
       - configAPI
       - kafka1
-      - kafka-topic-creator # Wait until topics are created
 
   # 🚪 API Gateway
   gatewayAPI:
@@ -230,7 +228,6 @@ services:
       - otel-collector
       - redis
       - kafka1
-      - kafka-topic-creator # Wait until topics are created
 
 
   # 🧾 Order Service (reactive)
@@ -250,7 +247,6 @@ services:
       - discoveryAPI
       - otel-collector
       - kafka1
-      - kafka-topic-creator # Wait until topics are created
 
   # 👥 Customer Service
   customerAPI:
@@ -271,7 +267,6 @@ services:
       - discoveryAPI
       - otel-collector
       - kafka1
-      - kafka-topic-creator # Wait until topics are created
 
   web-app:
     image: justamitsaha/new-ms-webapp:v1
