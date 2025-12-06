@@ -190,10 +190,10 @@ services:
       - loki
 
   # 📚 Config Service
-  config-service:
+  configAPI:
     #    build: ../configService
     image: justamitsaha/new-ms-config-service:v1
-    container_name: config-service
+    container_name: configAPI
     restart: unless-stopped
     environment:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
@@ -210,10 +210,10 @@ services:
       - kafka-topic-creator # Wait until topics are created
 
   # 🔎 Discovery Service (Eureka)
-  discovery-service:
+  discoveryAPI:
     #    build: ../discoveryService
     image: justamitsaha/new-ms-discovery-service:v1
-    container_name: discovery-service
+    container_name: discoveryAPI
     restart: unless-stopped
     environment:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
@@ -222,27 +222,27 @@ services:
       - "8761:8761"
     depends_on:
       - otel-collector
-      - config-service
+      - configAPI
       - kafka1
       - kafka-topic-creator # Wait until topics are created
 
   # 🚪 API Gateway
-  gateway-service:
+  gatewayAPI:
     #    build: ../gatewayService
     image: justamitsaha/new-ms-gateway-service:v1
-    container_name: gateway-service
+    container_name: gatewayAPI
     restart: unless-stopped
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:8888
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
       - APP_CUSTOMER-SERVICE_BASE-URL=http://customer-service
       - APP_ORDER-SERVICE_BASE-URL=http://order-service
     ports:
       - "8085:8085"
     depends_on:
-      - discovery-service
-      - config-service
+      - discoveryAPI
+      - configAPI
       - otel-collector
       - redis
       - kafka1
@@ -250,40 +250,40 @@ services:
 
 
   # 🧾 Order Service (reactive)
-  order-service:
+  orderAPI:
     #    build: ../reactiveOrderService
     image: justamitsaha/new-ms-reactive-order-service:v1
-    container_name: order-service
+    container_name: orderAPI
     restart: unless-stopped
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:8888
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
     ports:
       - "8080:8080"
     depends_on:
-      - config-service
-      - discovery-service
+      - configAPI
+      - discoveryAPI
       - otel-collector
       - kafka1
       - kafka-topic-creator # Wait until topics are created
 
   # 👥 Customer Service
-  customer-service:
+  customerAPI:
     #    build: ../customerService
     image: justamitsaha/new-ms-customer-service:v1
-    container_name: customer-service
+    container_name: customerAPI
     restart: unless-stopped
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-service:8888
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - APP_ORDER-SERVICE_BASE-URL=http://order-service
+      - APP_orderAPI_BASE-URL=http://orderAPI
     ports:
       - "8082:8081" # Host port 8082 -> Container port 8081
     depends_on:
-      - config-service
-      - discovery-service
+      - configAPI
+      - discoveryAPI
       - otel-collector
       - kafka1
       - kafka-topic-creator # Wait until topics are created
@@ -295,13 +295,13 @@ services:
     environment:
       # CORRECTED: Use the service name and internal port for container-to-container communication localhost will not work here
       #as it will refer to the container itself
-      - API_BASE_URL=http://gateway-service:8085
+      - API_BASE_URL=http://gatewayAPI:8085
       #      - API_BASE_URL=http://localhost:8085
       - APP_THEME_COLOR=#32a852
     ports:
       - "80:80"
     depends_on:
-      - gateway-service # Ensure the gateway is up before the front end
+      - gatewayAPI # Ensure the gateway is up before the front end
 
 volumes:
   loki-data:
