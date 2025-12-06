@@ -9,6 +9,8 @@ docker stats #Display a live stream of container resource usage statistics
 docker compose -f docker-compose-observability.yaml down #Stop and remove containers for a specific compose file
 docker compose -f docker-compose-observability.yaml up -d #Start containers for a specific
 docker compose up -d --force-recreate --pull always web-app #Recreate containers and pull the latest images for web-app service
+docker-compose restart SERVICE
+docker-compose up -d --build --force-recreate SERVICE
 
 
 ######Kafka Topic Management
