@@ -199,7 +199,7 @@ services:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
       - SPRING_PROFILES_ACTIVE=native
       - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS=file:/config-repo
-      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discovery-service:8761/eureka
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
     ports:
       - "8888:8888"
     volumes:
@@ -208,6 +208,12 @@ services:
       - otel-collector
       - kafka1
       - kafka-topic-creator # Wait until topics are created
+    # FIX 1: Add a healthcheck to determine when the Config Server is truly ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # 🔎 Discovery Service (Eureka)
   discoveryAPI:
@@ -220,11 +226,16 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
     ports:
       - "8761:8761"
+    # CORRECTED: All dependencies are now explicitly in the map structure
     depends_on:
-      - otel-collector
-      - configAPI
-      - kafka1
-      - kafka-topic-creator # Wait until topics are created
+      otel-collector:
+        condition: service_started
+      configAPI:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+      kafka-topic-creator:
+        condition: service_started
 
   # 🚪 API Gateway
   gatewayAPI:
@@ -236,17 +247,24 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - APP_CUSTOMER-SERVICE_BASE-URL=http://customer-service
-      - APP_ORDER-SERVICE_BASE-URL=http://order-service
+      - APP_CUSTOMER-SERVICE_BASE-URL=http://customerAPI
+      - APP_ORDER-SERVICE_BASE-URL=http://orderAPI
     ports:
       - "8085:8085"
+    # CORRECTED: All dependencies are now explicitly in the map structure
     depends_on:
-      - discoveryAPI
-      - configAPI
-      - otel-collector
-      - redis
-      - kafka1
-      - kafka-topic-creator # Wait until topics are created
+      configAPI:
+        condition: service_healthy
+      discoveryAPI:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_started
+      kafka-topic-creator:
+        condition: service_started
 
 
   # 🧾 Order Service (reactive)
@@ -261,12 +279,18 @@ services:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
     ports:
       - "8080:8080"
+    # CORRECTED: All dependencies are now explicitly in the map structure
     depends_on:
-      - configAPI
-      - discoveryAPI
-      - otel-collector
-      - kafka1
-      - kafka-topic-creator # Wait until topics are created
+      configAPI:
+        condition: service_healthy
+      discoveryAPI:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_started
+      kafka-topic-creator:
+        condition: service_started
 
   # 👥 Customer Service
   customerAPI:
@@ -278,23 +302,28 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://discoveryAPI:8761/eureka
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - APP_orderAPI_BASE-URL=http://orderAPI
+      - APP_ORDER-SERVICE_BASE-URL=http://orderAPI
     ports:
       - "8082:8081" # Host port 8082 -> Container port 8081
+    # CORRECTED: All dependencies are now explicitly in the map structure
     depends_on:
-      - configAPI
-      - discoveryAPI
-      - otel-collector
-      - kafka1
-      - kafka-topic-creator # Wait until topics are created
+      configAPI:
+        condition: service_healthy
+      discoveryAPI:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_started
+      kafka-topic-creator:
+        condition: service_started
 
   web-app:
     image: justamitsaha/new-ms-webapp:v1
     container_name: web-app
     restart: unless-stopped
     environment:
-      # CORRECTED: Use the service name and internal port for container-to-container communication localhost will not work here
-      #as it will refer to the container itself
+      # Correct reference for inter-container communication
       - API_BASE_URL=http://gatewayAPI:8085
       #      - API_BASE_URL=http://localhost:8085
       - APP_THEME_COLOR=#32a852
