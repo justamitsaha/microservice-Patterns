@@ -293,7 +293,10 @@ services:
     container_name: web-app
     restart: unless-stopped
     environment:
-      - API_BASE_URL=http://localhost:8085
+      # CORRECTED: Use the service name and internal port for container-to-container communication localhost will not work here
+      #as it will refer to the container itself
+      - API_BASE_URL=http://gateway-service:8085
+      #      - API_BASE_URL=http://localhost:8085
       - APP_THEME_COLOR=#32a852
     ports:
       - "80:80"
