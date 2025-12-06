@@ -58,24 +58,6 @@ services:
     # NOTE: You should ideally add environment variables here too for robustness, similar to kafka1
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
 
-  # 🆕 Kafka Topic Creator - Runs a script to create necessary Kafka topics on startup
-  kafka-topic-creator:
-    image: confluentinc/cp-kafka:7.4.0 # Use a Kafka client image
-    container_name: kafka-topic-creator
-    volumes:
-      # Mount the script so the container can execute it
-      - ./create-topics.sh:/usr/bin/create-topics.sh
-    depends_on:
-      # Wait for all brokers to be running before attempting to create topics
-      - kafka1
-      - kafka2
-      - kafka3
-    # Use the script as the command/entrypoint
-    command: ["/usr/bin/create-topics.sh"]
-    # Ensure it only runs once and then exits
-    restart: "no"
-
-
   # 📜 Schema Registry - Stores and validates Avro/JSON schemas for Kafka message compatibility
   schema-registry:
     image: confluentinc/cp-schema-registry:7.4.0
