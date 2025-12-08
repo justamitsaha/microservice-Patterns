@@ -1,8 +1,8 @@
 #!/bin/bash
 
-BROKER="192.168.0.143:9092"   # use any one broker for bootstrap
-REPLICATION=3
-PARTITIONS=3
+BROKER="localhost:9092"   # use any one broker for bootstrap
+REPLICATION=1
+PARTITIONS=1
 
 # ========== Order Events ==========
 docker exec -it kafka1 kafka-topics \

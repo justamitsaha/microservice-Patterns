@@ -22,3 +22,14 @@ CREATE TABLE IF NOT EXISTS order_outbox (
 
 CREATE INDEX idx_order_outbox_status_available
     ON order_outbox (status, available_at);
+
+use `amit`;
+TRUNCATE `amit`.`order_outbox`;
+TRUNCATE `amit`.`orders`;
+TRUNCATE `amit`.`customers`;
+
+SELECT * FROM amit.orders;
+
+SELECT * FROM amit.order_outbox;
+
+SELECT * FROM amit.customers;

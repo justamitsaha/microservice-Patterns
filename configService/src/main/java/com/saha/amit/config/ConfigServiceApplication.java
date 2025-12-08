@@ -16,12 +16,9 @@ public class ConfigServiceApplication {
         logger.info("http://localhost:8888/actuator/health");
         /*
          * http://localhost:8888/{application}/{profile}/{label}
-         * application: service name (order-service, customer-service, etc.) has to be
-         * correct
-         * profile: environment profile (dev, default, prod, etc.) Even if not
-         * specified, 'default' is used.
-         * label: git branch/tag (main, develop, feature-branch, etc.) If not specified
-         * it will give 404 error.
+         * application: service name (order-service, customer-service, etc.) has to be correct
+         * profile: environment profile (dev, default, prod, etc.) Even if not specified, 'default' is used.
+         * label: git branch/tag (main, develop, feature-branch, etc.) If not specified it will give 404 error.
          */
         logger.info("http://localhost:8888/order-service/dev/dev");
         logger.info("http://localhost:8888/customer-service/default/main");
