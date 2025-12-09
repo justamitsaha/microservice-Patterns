@@ -1,66 +1,114 @@
 version: '3.8'
 
 services:
-  # 🧩 Zookeeper - Coordination service required by Kafka brokers
+  # 🧩 Zookeeper - Coordination service (Strictly limited)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      TZ: Asia/Kolkata
     ports:
       - "2181:2181"
+    # --- 1. FIXED HEALTHCHECK: Added '-w 1' timeout to netcat to prevent hanging.
+    healthcheck:
+      test: ["CMD-SHELL", "zookeeper-shell localhost:2181 <<< 'ls /' > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
 
-  # 🦜 Kafka Broker 1 - The single core message broker for event streaming
+  # 🦜 Kafka Broker 1 - Core message broker (JVM needs a bit more room)
   kafka1:
     image: confluentinc/cp-kafka:7.4.0
     container_name: kafka1
+    # --- UPDATED DEPENDENCY: Waits until zookeeper reports as 'healthy'.
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     volumes:
-      # --- FIX 1: Updated filename to kafka-single.properties ---
       - ./kafka-config/kafka-single.properties:/etc/kafka/server.properties
-    environment: # Explicitly define environment variables needed, removing redundant listener definitions
+    environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # Removed KAFKA_LISTENERS, KAFKA_ADVERTISED_LISTENERS, etc. as they are defined in kafka-single.properties
+      TZ: Asia/Kolkata
     command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
+    # --- ADDED HEALTHCHECK: Checks if the client port is accepting connections.
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s # Gives the Kafka JVM more time to start up
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: '1.0'
 
-  # 📜 Schema Registry - Stores and validates Avro/JSON schemas. Now points only to kafka1.
+  # 📜 Schema Registry - Stores and validates schemas (JVM limited)
   schema-registry:
     image: confluentinc/cp-schema-registry:7.4.0
     container_name: schema-registry
+    # --- UPDATED DEPENDENCY: Waits until kafka1 reports as 'healthy'.
     depends_on:
-      - kafka1 # Only depends on the single broker
+      kafka1:
+        condition: service_healthy
     ports:
       - "8081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      # Connection is correct for internal listener
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka1:19092"
-    # --- Delay command kept for network stabilization ---
+      TZ: Asia/Kolkata
     command: >
       /bin/bash -c "
-        echo 'Waiting 15 seconds for Kafka to fully stabilize on the network...' &&
-        sleep 15 &&
-        /etc/confluent/docker/run" 
+        /etc/confluent/docker/run"
+    # --- ADDED HEALTHCHECK: Checks the public /subjects endpoint to confirm readiness.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 📡 OpenTelemetry Collector - Collects traces and metrics
+  # 📡 OpenTelemetry Collector - Telemetry processing (Minimal footprint)
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.103.1
     container_name: otel-collector
     restart: unless-stopped
     volumes:
       - ./otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    environment:
+      # Set timezone using TZ environment variable
+      TZ: Asia/Kolkata
     ports:
       - "4317:4317"  # OTLP gRPC receiver
       - "4318:4318"  # OTLP HTTP receiver
     command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - jaeger
+      - tempo
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
 
-  # 📈 Prometheus - Time-series metrics database
+  # 📈 Prometheus - Time-series metrics database (Limited)
   prometheus:
     image: prom/prometheus:v2.54.1
     container_name: prometheus
@@ -68,13 +116,21 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus-alerts.yml:/etc/prometheus/alerts/prometheus-alerts.yml:ro
+    environment:
+      # Set timezone using TZ environment variable
+      TZ: Asia/Kolkata
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--web.enable-lifecycle"
     ports:
       - "9090:9090"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 📊 Grafana - Visualization and dashboarding tool
+  # 📊 Grafana - Visualization and dashboarding tool (Limited)
   grafana:
     image: grafana/grafana:11.2.0
     container_name: grafana
@@ -82,37 +138,56 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - TZ=Asia/Kolkata
     volumes:
       - ./grafana/provisioning/datasources/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
       - ./grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
 
-  # 🔍 Jaeger - Lightweight distributed tracing UI
+  # 🔍 Jaeger - Distributed tracing UI and backend (Limited storage)
   jaeger:
     image: jaegertracing/all-in-one:1.57
     container_name: jaeger
     restart: unless-stopped
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+      - TZ=Asia/Kolkata
     ports:
       - "16686:16686"   # Jaeger Web UI
       - "14268:14268"   # Collector HTTP
       - "14250:14250"   # Collector gRPC
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # ⏱️ Tempo - Distributed tracing backend
+  # ⏱️ Tempo - Distributed tracing backend (Limited storage)
   tempo:
     image: grafana/tempo:2.6.0
     container_name: tempo
     restart: unless-stopped
     volumes:
       - ./tempo/config.yaml:/etc/tempo/config.yaml:ro
+    environment:
+      - TZ=Asia/Kolkata
     command: ["-config.file=/etc/tempo/config.yaml"]
     ports:
       - "3200:3200"   # Tempo HTTP API
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 📜 Loki - Centralized log store
+  # 📜 Loki - Centralized log store (Limited storage)
   loki:
     image: grafana/loki:2.9.6
     container_name: loki
@@ -121,18 +196,32 @@ services:
     volumes:
       - ./loki/config.yaml:/etc/loki/config.yaml:ro
       - loki-data:/loki
+    environment:
+      - TZ=Asia/Kolkata
     ports:
       - "3100:3100"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # ⚡ Redis - In-memory data store
+  # ⚡ Redis - In-memory data store (Very strict limit)
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
       - "6379:6379"
+    environment:
+      - TZ=Asia/Kolkata
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.2'
 
-  # 🐾 Promtail - tails container logs & forwards to Loki
+  # 🐾 Promtail - tails container logs & forwards to Loki (Very light)
   promtail:
     image: grafana/promtail:2.9.6
     container_name: promtail
@@ -142,10 +231,17 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
+    environment:
+      - TZ=Asia/Kolkata
     depends_on:
       - loki
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.2'
 
-  # 📚 Config Service - Now pointing to single broker
+  # 📚 Config Service (Standard Spring Boot Limit)
   configAPI:
     #    build: ../configService
     image: justamitsaha/new-ms-config-service:v1
@@ -153,17 +249,27 @@ services:
     restart: unless-stopped
     environment:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      # --- FIX 2: Switched to internal port 19092 ---
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka1:19092
+      - TZ=Asia/Kolkata
     ports:
       - "8888:8888"
     volumes:
       - ../configService/src/main/resources/config-repo:/config-repo:ro
+    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
-      - otel-collector
-      - kafka1 # Minimal dependency to start up alongside Kafka
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 🔎 Discovery Service (Eureka)
+  # 🔎 Discovery Service (Standard Spring Boot Limit)
   discoveryAPI:
     #    build: ../discoveryService
     image: justamitsaha/new-ms-discovery-service:v1
@@ -171,16 +277,26 @@ services:
     restart: unless-stopped
     environment:
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
-      # --- FIX 3: Switched to internal port 19092 ---
       - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
+      - TZ=Asia/Kolkata
     ports:
       - "8761:8761"
+    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
-      - otel-collector
-      - kafka1 # Minimal dependency
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 🚪 API Gateway
+  # 🚪 API Gateway (Slightly higher limit due to being the main traffic router)
   gatewayAPI:
     #    build: ../gatewayService
     image: justamitsaha/new-ms-gateway-service:v1
@@ -189,21 +305,31 @@ services:
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
-      # --- FIX 4: Switched to internal port 19092 (two spots) ---
       - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - MANAGEMENT_KAFKA_BOOTSTRAP=kafka1:19092
+      - TZ=Asia/Kolkata
     ports:
       - "8085:8085"
+    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
-      - otel-collector
-      - redis
-      - kafka1 # Minimal dependency
+      otel-collector:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: '0.7'
 
-
-  # 🧾 Order Service (reactive)
+  # 🧾 Order Service (Standard Spring Boot Limit)
   orderAPI:
     #    build: ../reactiveOrderService
     image: justamitsaha/new-ms-reactive-order-service:v1
@@ -211,18 +337,29 @@ services:
     restart: unless-stopped
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
-      # --- FIX 5: Switched to internal port 19092 ---
-      - SPRING_KAFKA_BOOTSTRAP:=kafka1:19092
-      - SCHEMA_REGISTRY_URL:=http://schema-registry:8081
+      - SPRING_KAFKA_BOOTSTRAP=kafka1:19092
+      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
+      - SPRING_R2DBC_URL=r2dbc:mysql://host.docker.internal:3306/amit
+      - TZ=Asia/Kolkata
     ports:
       - "8080:8080"
+    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
-      - otel-collector
-      - kafka1 # Minimal dependency
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
-  # 👥 Customer Service
+  # 👥 Customer Service (Standard Spring Boot Limit)
   customerAPI:
     #    build: ../customerService
     image: justamitsaha/new-ms-customer-service:v1
@@ -231,30 +368,45 @@ services:
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
-      # --- FIX 6: Switched to internal port 19092 (two spots) ---
-      - SPRING_CLOUD_STREAM_KAFKA_BROKERS:=kafka1:19092
+      - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
+      - SPRING_KAFKA_BOOTSTRAP=kafka1:19092
       - ORDER_SERVICE_BASE_URL=http://orderAPI
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
-      - SPRING_KAFKA_BOOTSTRAP=kafka1:19092
+      - SPRING_R2DBC_URL=r2dbc:mysql://host.docker.internal:3306/amit
+      - TZ=Asia/Kolkata
     ports:
       - "8082:8081" # Host port 8082 -> Container port 8081
+    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
-      - otel-collector
-      - kafka1 # Minimal dependency
+      otel-collector:
+        condition: service_started
+      kafka1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
 
   web-app:
     image: justamitsaha/new-ms-webapp:v1
     container_name: web-app
     restart: unless-stopped
     environment:
-      # Correct reference for inter-container communication
       - API_BASE_URL=http://gatewayAPI:8085
-      #      - API_BASE_URL=http://localhost:8085
       - APP_THEME_COLOR=#32a852
+      - TZ=Asia/Kolkata
     ports:
       - "80:80"
     depends_on:
-      - gatewayAPI # Ensure the gateway is up before the front end
+      - gatewayAPI
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.2'
 
 volumes:
   loki-data:

@@ -31,8 +31,6 @@ TRUNCATE `amit`.`orders`;
 TRUNCATE `amit`.`customers`;
 
 SELECT * FROM amit.orders;
-
 SELECT * FROM amit.order_outbox;
-
 SELECT * FROM amit.customers;
 
