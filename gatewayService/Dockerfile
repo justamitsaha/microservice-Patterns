@@ -16,7 +16,7 @@ WORKDIR /app
 RUN addgroup --system spring && adduser -S spring -G spring
 USER spring:spring
 
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Duser.timezone=UTC"
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Duser.timezone=Asia/Kolkata"
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8085
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]

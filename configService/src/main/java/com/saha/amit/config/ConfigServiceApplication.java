@@ -20,7 +20,7 @@ public class ConfigServiceApplication {
          * profile: environment profile (dev, default, prod, etc.) Even if not specified, 'default' is used.
          * label: git branch/tag (main, develop, feature-branch, etc.) If not specified it will give 404 error.
          */
-        logger.info("http://localhost:8888/order-service/dev/main");
+        logger.info("http://localhost:8888/order-service/confluent/main");
         logger.info("http://localhost:8888/customer-service/default/main");
         logger.info("http://localhost:8888/gateway-service/default/main");
         logger.info("http://localhost:8888/discovery-service/default/main");

@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saha.amit.reactiveOrderService.events.OrderEvent;
 import com.saha.amit.reactiveOrderService.proto.OrderEventMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -17,6 +20,7 @@ import org.springframework.core.env.Environment;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializerConfig;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+import org.springframework.core.env.Profiles;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.sender.KafkaSender;
@@ -29,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class KafkaConfig {
@@ -162,6 +167,7 @@ public class KafkaConfig {
         props.put(ProducerConfig.LINGER_MS_CONFIG, env.getProperty("spring.kafka.producer.linger-ms", "10"));
         props.put(ProducerConfig.RETRIES_CONFIG, env.getProperty("spring.kafka.producer.retries", "5"));
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, env.getProperty("spring.kafka.producer.max-in-flight", "5"));
+        applyConfluentSecurityIfNeeded(props);
         return props;
     }
 
@@ -180,7 +186,20 @@ public class KafkaConfig {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, env.getProperty("spring.kafka.consumer.enable-auto-commit", "false"));
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, env.getProperty("spring.kafka.consumer.auto-offset-reset", "earliest"));
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, env.getProperty("spring.kafka.consumer.max-poll-records", "50"));
+        applyConfluentSecurityIfNeeded(props);
         return props;
+    }
+
+    private void applyConfluentSecurityIfNeeded(Map<String, Object> props) {
+        if (env.acceptsProfiles(Profiles.of("confluent"))) {
+            log.info("Applying Confluent Cloud security configurations to Kafka properties");
+            props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, env.getProperty("spring.kafka.properties.security.protocol"));
+            props.put(SaslConfigs.SASL_MECHANISM, env.getProperty("spring.kafka.properties.sasl.mechanism"));
+            props.put(SaslConfigs.SASL_JAAS_CONFIG, env.getProperty("spring.kafka.properties.sasl.jaas.config"));
+            props.put("client.dns.lookup", env.getProperty("spring.kafka.properties.client.dns.lookup", "use_all_dns_ips"));
+            // Required for Confluent Cloud
+            props.put("ssl.endpoint.identification.algorithm", "");
+        }
     }
 
     /**

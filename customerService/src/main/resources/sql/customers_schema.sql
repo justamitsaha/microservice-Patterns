@@ -24,7 +24,7 @@ CREATE INDEX idx_customers_created_at ON customers (created_at);
 -- ALTER TABLE customers MODIFY id CHAR(36) NOT NULL PRIMARY KEY;
 -- and ensure the application sets `id` to a UUID string before inserting.
 
-
+mysql -u root -p
 use `amit`;
 TRUNCATE `amit`.`order_outbox`;
 TRUNCATE `amit`.`orders`;

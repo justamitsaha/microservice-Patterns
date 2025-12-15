@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class CustomerServiceApplication {
     public static final Logger logger = LoggerFactory.getLogger(CustomerServiceApplication.class);
     public static void main(String[] args) {
+        logger.info("Customer Service Application Started");
         logger.info("http://localhost:8082/actuator/health");
         logger.info("http://localhost:8082/swagger-ui/webjars/swagger-ui/index.html");
         SpringApplication.run(CustomerServiceApplication.class, args);

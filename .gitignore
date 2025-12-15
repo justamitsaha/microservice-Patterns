@@ -40,3 +40,6 @@ mongo-data
 /postgres-inventory/
 /postgres-order/
 /grafana/
+
+### Environment Files ###
+*.env

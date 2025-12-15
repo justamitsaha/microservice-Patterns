@@ -29,13 +29,8 @@ USER spring:spring
 # Copy jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# JVM optimization flags for containers
-ENV JAVA_OPTS="\
-  -XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=75 \
-  -XX:InitialRAMPercentage=50 \
-  -Duser.timezone=UTC \
-"
+# JVM optimization flags for containers with time zone set to Asia/Kolkata
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Duser.timezone=Asia/Kolkata"
 
 # For OTEL Auto-instrumentation (optional)
 # ENV JAVA_TOOL_OPTIONS="-javaagent:/app/opentelemetry-javaagent.jar"

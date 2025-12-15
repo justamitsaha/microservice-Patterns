@@ -1,93 +1,6 @@
 version: '3.8'
 
 services:
-  # 🧩 Zookeeper - Coordination service (Strictly limited)
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      TZ: Asia/Kolkata
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_log:/var/lib/zookeeper/log
-    ports:
-      - "2181:2181"
-    # --- 1. FIXED HEALTHCHECK: Added '-w 1' timeout to netcat to prevent hanging.
-    healthcheck:
-      test: ["CMD-SHELL", "zookeeper-shell localhost:2181 <<< 'ls /' > /dev/null 2>&1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-          cpus: '0.5'
-
-  # 🦜 Kafka Broker 1 - Core message broker (JVM needs a bit more room)
-  kafka1:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka1
-    # --- UPDATED DEPENDENCY: Waits until zookeeper reports as 'healthy'.
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    ports:
-      - "9092:9092"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-      - ./kafka-config/kafka-single.properties:/etc/kafka/server.properties
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      TZ: Asia/Kolkata
-    command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
-    # --- ADDED HEALTHCHECK: Checks if the client port is accepting connections.
-    healthcheck:
-      test: ["CMD", "sh", "-c", "nc -z localhost 9092"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s # Gives the Kafka JVM more time to start up
-    deploy:
-      resources:
-        limits:
-          memory: 768m
-          cpus: '1.0'
-
-  # 📜 Schema Registry - Stores and validates schemas (JVM limited)
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.4.0
-    container_name: schema-registry
-    # --- UPDATED DEPENDENCY: Waits until kafka1 reports as 'healthy'.
-    depends_on:
-      kafka1:
-        condition: service_healthy
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka1:19092"
-      TZ: Asia/Kolkata
-    command: >
-      /bin/bash -c "
-        /etc/confluent/docker/run"
-    # --- ADDED HEALTHCHECK: Checks the public /subjects endpoint to confirm readiness.
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: '0.5'
-
   # 📡 OpenTelemetry Collector - Telemetry processing (Minimal footprint)
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.103.1
@@ -253,9 +166,12 @@ services:
     restart: unless-stopped
     environment:
       - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://otel-collector:4318/v1/traces
-      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka1:19092
       - SPRING_JACKSON_TIME_ZONE=Asia/Kolkata
       - LOGGING_TIME_ZONE=Asia/Kolkata
+      - SPRING_PROFILES_ACTIVE=confluent
+      - CONFLUENT_BOOTSTRAP=${CONFLUENT_BOOTSTRAP}
+      - CONFLUENT_API_KEY=${CONFLUENT_API_KEY}
+      - CONFLUENT_API_SECRET=${CONFLUENT_API_SECRET}
     ports:
       - "8888:8888"
     healthcheck:
@@ -265,14 +181,9 @@ services:
       retries: 5
     volumes:
       - ../configService/src/main/resources/config-repo:/config-repo:ro
-    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
       otel-collector:
         condition: service_started
-      kafka1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -287,10 +198,13 @@ services:
     restart: unless-stopped
     environment:
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
-      - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - SPRING_JACKSON_TIME_ZONE=Asia/Kolkata
       - LOGGING_TIME_ZONE=Asia/Kolkata
+      - SPRING_PROFILES_ACTIVE=confluent
+      - CONFLUENT_BOOTSTRAP=${CONFLUENT_BOOTSTRAP}
+      - CONFLUENT_API_KEY=${CONFLUENT_API_KEY}
+      - CONFLUENT_API_SECRET=${CONFLUENT_API_SECRET}
     ports:
       - "8761:8761"
     healthcheck:
@@ -298,14 +212,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
       otel-collector:
         condition: service_started
-      kafka1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
       configAPI:
         condition: service_healthy
     deploy:
@@ -323,25 +232,22 @@ services:
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
-      - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - MANAGEMENT_KAFKA_BOOTSTRAP=kafka1:19092
       - SPRING_JACKSON_TIME_ZONE=Asia/Kolkata
       - LOGGING_TIME_ZONE=Asia/Kolkata
+      - SPRING_PROFILES_ACTIVE=confluent
+      - CONFLUENT_BOOTSTRAP=${CONFLUENT_BOOTSTRAP}
+      - CONFLUENT_API_KEY=${CONFLUENT_API_KEY}
+      - CONFLUENT_API_SECRET=${CONFLUENT_API_SECRET}
     ports:
       - "8085:8085"
-    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
       otel-collector:
         condition: service_started
       redis:
         condition: service_started
-      kafka1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
       discoveryAPI:
         condition: service_healthy
     deploy:
@@ -358,23 +264,25 @@ services:
     restart: unless-stopped
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
-      - SPRING_KAFKA_BOOTSTRAP=kafka1:19092
       - SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
       - SPRING_R2DBC_URL=r2dbc:mysql://host.docker.internal:3306/amit
       - SPRING_JACKSON_TIME_ZONE=Asia/Kolkata
       - LOGGING_TIME_ZONE=Asia/Kolkata
+      - SPRING_PROFILES_ACTIVE=confluent
+      # Below values are confidential so passed from .env file which is not committed
+      # check the .envSAMPLE file for reference and fill values from system env
+      - CONFLUENT_BOOTSTRAP=${CONFLUENT_BOOTSTRAP}
+      - CONFLUENT_API_KEY=${CONFLUENT_API_KEY}
+      - CONFLUENT_API_SECRET=${CONFLUENT_API_SECRET}
+      - SPRING_R2DBC_USERNAME=${SPRING_R2DBC_USERNAME}
+      - SPRING_R2DBC_PASSWORD=${SPRING_R2DBC_PASSWORD}
     ports:
       - "8080:8080"
-    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
       otel-collector:
         condition: service_started
-      kafka1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
       discoveryAPI:
         condition: service_healthy
     deploy:
@@ -392,23 +300,24 @@ services:
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configAPI:8888
       - EUREKA_DEFAULT_ZONE=http://discoveryAPI:8761/eureka
-      - SPRING_CLOUD_STREAM_KAFKA_BROKERS=kafka1:19092
-      - SPRING_KAFKA_BOOTSTRAP=kafka1:19092
       - ORDER_SERVICE_BASE_URL=http://orderAPI
       - OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
       - SPRING_R2DBC_URL=r2dbc:mysql://host.docker.internal:3306/amit
       - SPRING_JACKSON_TIME_ZONE=Asia/Kolkata
       - LOGGING_TIME_ZONE=Asia/Kolkata
+      - SPRING_PROFILES_ACTIVE=confluent
+      # Below values are confidential so passed from .env file which is not committed
+      # check the .envSAMPLE file for reference and fill values from system env
+      - CONFLUENT_BOOTSTRAP=${CONFLUENT_BOOTSTRAP}
+      - CONFLUENT_API_KEY=${CONFLUENT_API_KEY}
+      - CONFLUENT_API_SECRET=${CONFLUENT_API_SECRET}
+      - SPRING_R2DBC_USERNAME=${SPRING_R2DBC_USERNAME}
+      - SPRING_R2DBC_PASSWORD=${SPRING_R2DBC_PASSWORD}
     ports:
       - "8082:8082" # Host port 8082 -> Container port 8082
-    # --- UPDATED DEPENDENCY: Waits for both Kafka and Schema Registry to be healthy.
     depends_on:
       otel-collector:
         condition: service_started
-      kafka1:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
       discoveryAPI:
         condition: service_healthy
     deploy:
@@ -417,26 +326,7 @@ services:
           memory: 512m
           cpus: '0.5'
 
-  web-app:
-    image: justamitsaha/new-ms-webapp:v1
-    container_name: web-app
-    restart: unless-stopped
-    environment:
-      - API_BASE_URL=http://localhost:8085
-      - APP_THEME_COLOR=#32a852
-      - TZ=Asia/Kolkata
-    ports:
-      - "80:80"
-    depends_on:
-      - gatewayAPI
-    deploy:
-      resources:
-        limits:
-          memory: 128m
-          cpus: '0.2'
-
 volumes:
   loki-data:
-  kafka_data:
   zookeeper_data:
   zookeeper_log:
