@@ -55,7 +55,7 @@ public class OrderController {
     public ResponseEntity<Flux<OrderResponse>> getOrders(@RequestParam(value = "customerId", required = false) String customerId) {
         logger.info("Received order retrieval request for customerId: {}", customerId);
         Flux<OrderResponse> body = orderService.getOrdersByCustomer(customerId)
-                .delayElements(Duration.ofSeconds(5))
+                //.delayElements(Duration.ofSeconds(5))   // This will cause network timeout from gateway due to
                 .doOnNext(e -> logger.info("Order retrieved: {}", e))
                 .map(e -> new OrderResponse(e.getOrderId(), e.getCustomerId(), e.getAmount(), e.getStatus()));
 

@@ -36,6 +36,7 @@ public class OrderService {
     }
 
     public Flux<OrderEntity> getOrdersByCustomer(String customerId) {
+        log.info("Inside getOrdersByCustomer for customerId: {}", customerId);
         return orderRepository.findByCustomerId(customerId);
     }
 }
