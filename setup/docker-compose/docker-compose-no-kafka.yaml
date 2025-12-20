@@ -150,6 +150,7 @@ services:
       - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
     environment:
       - TZ=Asia/Kolkata
+      - DOCKER_API_VERSION=1.44
     depends_on:
       - loki
     deploy:

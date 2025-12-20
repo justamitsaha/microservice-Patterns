@@ -12,6 +12,7 @@ public class CustomerServiceApplication {
         logger.info("Customer Service Application Started");
         logger.info("http://localhost:8082/actuator/health");
         logger.info("http://localhost:8082/swagger-ui/webjars/swagger-ui/index.html");
+        logger.info("For local testing SPRING_PROFILES_ACTIVE=confluentLocal loaded from environment variable which has confluent for kafka and OTEL disabled");
         SpringApplication.run(CustomerServiceApplication.class, args);
     }
 }

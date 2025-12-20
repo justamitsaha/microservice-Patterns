@@ -13,6 +13,7 @@ public class DiscoveryServiceApplication {
     public static void main(String[] args) {
         logger.info("http://localhost:8761/");
         logger.info("http://localhost:8761/actuator/health/");
+        logger.info("For local testing SPRING_PROFILES_ACTIVE=confluentLocal loaded from environment variable which has confluent for kafka and OTEL disabled");
         SpringApplication.run(DiscoveryServiceApplication.class, args);
     }
 }

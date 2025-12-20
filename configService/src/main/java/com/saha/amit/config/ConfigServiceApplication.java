@@ -26,6 +26,7 @@ public class ConfigServiceApplication {
         logger.info("http://localhost:8888/discovery-service/default/main");
 
         logger.info("curl -X POST http://localhost:8080/actuator/busrefresh");
+        logger.info("For local testing SPRING_PROFILES_ACTIVE=confluentLocal loaded from environment variable which has confluent for kafka and OTEL disabled");
         SpringApplication.run(ConfigServiceApplication.class, args);
     }
 }

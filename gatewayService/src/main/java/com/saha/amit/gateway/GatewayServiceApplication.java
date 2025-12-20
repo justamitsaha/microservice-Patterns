@@ -10,6 +10,7 @@ public class GatewayServiceApplication {
     private final static Logger logger = LoggerFactory.getLogger(GatewayServiceApplication.class);
     public static void main(String[] args) {
         logger.info("http://localhost:8085/actuator/health");
+        logger.info("For local testing SPRING_PROFILES_ACTIVE=confluentLocal loaded from environment variable which has confluent for kafka and OTEL disabled");
         SpringApplication.run(GatewayServiceApplication.class, args);
     }
 }

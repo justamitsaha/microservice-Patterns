@@ -13,8 +13,8 @@ public class ReactiveOrderServiceApplication {
         String swagger_UI = "http://localhost:8080/swagger-ui/index.html";
         logger.info("http://localhost:8080/actuator/health");
         logger.info("Swagger UI, {} ", swagger_UI);
+        logger.info("For local testing SPRING_PROFILES_ACTIVE=confluentLocal loaded from environment variable which has confluent for kafka and OTEL disabled");
         SpringApplication.run(ReactiveOrderServiceApplication.class, args);
     }
-
 }
 
