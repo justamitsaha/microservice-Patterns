@@ -120,7 +120,8 @@ public class CustomerController {
                     if (resp.getStatusCode() == HttpStatus.UNAUTHORIZED) {
                         log.warn("🚫 Login failed for email: {} (User not found or unauthorized)", emailAttempt);
                     }
-                });
+                })
+                .doFinally(signalType -> log.info("🔒 Login process completed for email: {}", emailAttempt));
     }
 
 

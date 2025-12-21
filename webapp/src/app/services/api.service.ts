@@ -81,4 +81,16 @@ export class ApiService {
       }
     );
   }
+
+
+  init(): Observable<{ clientId: string }> {
+    return this.http.post<{ clientId: string }>(
+      `${this.BASE}/init`,
+      {},
+      {
+        withCredentials: true, // only if you plan cookies later
+      }
+    );
+  }
+
 }

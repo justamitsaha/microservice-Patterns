@@ -1,5 +1,6 @@
 package com.saha.amit.gateway.config;
 
+import com.saha.amit.gateway.filter.InitGatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.RequestRateLimiterGatewayFilterFactory;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
@@ -8,6 +9,7 @@ import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -15,27 +17,40 @@ public class GatewayRoutesConfig {
 
     // 1️⃣ Simple key resolver — rate limit all requests by "anonymous" user
     @Bean
-    public KeyResolver userKeyResolver() {
-        return exchange -> Mono.just("anonymous");
+    public KeyResolver clientIdKeyResolver() {
+        return exchange ->
+                Mono.justOrEmpty(exchange.getRequest().getHeaders().getFirst("X-Client-Id"))
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST, "Missing X-Client-Id"
+                        )));
     }
+
 
     // 2️⃣ Redis rate limiter — 10 requests/sec, burst up to 20
     @Bean
-    public RedisRateLimiter redisRateLimiter() {
-        return new RedisRateLimiter(10, 20);
+    public RedisRateLimiter clientRateLimiter() {
+        return new RedisRateLimiter(
+                10, 20
+        );
     }
 
+
     // 3️⃣ Custom factory bean (renamed to avoid conflict with GatewayAutoConfiguration)
-    @Bean(name = "customRequestRateLimiterGatewayFilterFactory")
+    @Bean
     public RequestRateLimiterGatewayFilterFactory customRequestRateLimiterGatewayFilterFactory(
-            RedisRateLimiter redisRateLimiter,
-            KeyResolver keyResolver) {
+            RedisRateLimiter clientRateLimiter,
+            KeyResolver clientIdKeyResolver) {
 
         RequestRateLimiterGatewayFilterFactory factory =
-                new RequestRateLimiterGatewayFilterFactory(redisRateLimiter, keyResolver);
+                new RequestRateLimiterGatewayFilterFactory(
+                        clientRateLimiter,
+                        clientIdKeyResolver
+                );
+
         factory.setEmptyKeyStatusCode(HttpStatus.TOO_MANY_REQUESTS.name());
         return factory;
     }
+
 
     // 4️⃣ Define all routes and apply rate limiter
     @Bean
@@ -90,7 +105,11 @@ public class GatewayRoutesConfig {
                         .path("/api/customers/{segment}", "/api/customers/{segment}/**")
                         .filters(f -> f.rewritePath("/api/customers/(?<segment>.*)", "/customers/${segment}"))
                         .uri("lb://customer-service"))
-
+                .route("init", r -> r
+                        .path("/init")
+                        .filters(f -> f.filter(new InitGatewayFilter()))
+                        .uri("no://op") // important
+                )
                 .build();
     }
 }

@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/customers/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/customers").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/customers/**").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/init").permitAll()
 
                         .pathMatchers("/public/**", "/actuator/**", "/fallback/**").permitAll()
                         .anyExchange().authenticated()

@@ -1,44 +1,86 @@
-import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
+import {
+  HttpInterceptorFn,
+  HttpRequest,
+  HttpHandlerFn,
+  HttpErrorResponse
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '../services/config.service';
-import { catchError, switchMap, throwError, BehaviorSubject, filter, take } from 'rxjs';
+import {
+  catchError,
+  switchMap,
+  throwError,
+  BehaviorSubject,
+  filter,
+  take
+} from 'rxjs';
 
+// Emits the latest refreshed access token to queued requests
+// - null   → refresh in progress
+// - string → new token available
 const refreshSubject = new BehaviorSubject<string | null>(null);
+
+// Global flag to ensure ONLY ONE refresh call runs at a time
 let isRefreshing = false;
 
-export const jwtInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: HttpHandlerFn) => {
+export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('accessToken');
+  const clientId = sessionStorage.getItem('clientId');
+
   const http = inject(HttpClient);
   const config = inject(ConfigService);
 
-  // Build refresh URL from config
   const refreshUrl = `${config.apiBaseUrl}/customers/refresh`;
 
-  // Skip auth for login & refresh endpoints
-  if (req.url.includes('/login') || req.url.includes('/refresh')) {
-    return next(req);
+  // 1️⃣ Attach UUID first
+  let modifiedReq = req;
+  if (clientId) {
+    modifiedReq = modifiedReq.clone({
+      setHeaders: { 'X-Client-Id': clientId }
+    });
   }
 
-  // Add token header if present
-  const cloned = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+  // 2️⃣ Skip JWT logic for public endpoints
+  if (req.url.includes('/login') || req.url.includes('/refresh')) {
+    return next(modifiedReq);
+  }
+
+  // 3️⃣ Attach JWT if present
+  const cloned = token
+    ? modifiedReq.clone({
+      setHeaders: { Authorization: `Bearer ${token}` }
+    })
+    : modifiedReq;
 
   return next(cloned).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
+
         if (!isRefreshing) {
           isRefreshing = true;
           refreshSubject.next(null);
 
-          return http.post<{ accessToken: string }>(refreshUrl, {}, { withCredentials: true }).pipe(
+          return http.post<{ accessToken: string }>(
+            refreshUrl,
+            {},
+            {
+              withCredentials: true,
+              headers: clientId ? { 'X-Client-Id': clientId } : {}
+            }
+          ).pipe(
             switchMap(res => {
               isRefreshing = false;
-              const newToken = res.accessToken;
-              localStorage.setItem('accessToken', newToken);
-              refreshSubject.next(newToken);
+              localStorage.setItem('accessToken', res.accessToken);
+              refreshSubject.next(res.accessToken);
 
-              const retryReq = cloned.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } });
-              return next(retryReq);
+              return next(
+                cloned.clone({
+                  setHeaders: {
+                    Authorization: `Bearer ${res.accessToken}`
+                  }
+                })
+              );
             }),
             catchError(err => {
               isRefreshing = false;
@@ -46,17 +88,23 @@ export const jwtInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: H
               return throwError(() => err);
             })
           );
-        } else {
-          return refreshSubject.pipe(
-            filter(t => t !== null),
-            take(1),
-            switchMap(t =>
-              next(cloned.clone({ setHeaders: { Authorization: `Bearer ${t}` } }))
-            )
-          );
         }
+
+        return refreshSubject.pipe(
+          filter(t => t !== null),
+          take(1),
+          switchMap(t =>
+            next(
+              cloned.clone({
+                setHeaders: { Authorization: `Bearer ${t}` }
+              })
+            )
+          )
+        );
       }
+
       return throwError(() => error);
     })
   );
 };
+
