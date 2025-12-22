@@ -8,6 +8,20 @@ export const apiInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, nex
   const notify = inject(NotificationService);
   const auth = inject(AuthService);
 
+  // Attach client ID header if available this will be used by the backend for rate limiting
+  let modifiedReq = req;
+  const clientId = sessionStorage.getItem('clientId');
+  console.log('[API-INTERCEPTOR] URL:', req.url);
+  console.log('[API-INTERCEPTOR] clientId:', clientId);
+  if (clientId) {
+      modifiedReq = req.clone({
+        setHeaders: {
+          'X-Client-Id': clientId
+        }
+      });
+      console.log('[API-INTERCEPTOR] X-Client-Id attached');
+    }
+
   return next(req).pipe(
     tap({
       next: (event) => {
