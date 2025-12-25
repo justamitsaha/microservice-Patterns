@@ -11,9 +11,12 @@ import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 @Configuration
 public class GatewayRoutesConfig {
@@ -82,8 +85,8 @@ public class GatewayRoutesConfig {
                 .route("orders", r -> r
                         .path("/orders/**")
                         .filters(f -> f
-                                .addRequestHeader("X-From-Gateway", "true")
-                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")
+                                .addRequestHeader("X-From-Gateway", "true") // ✅ Mark request as from gateway
+                                .addResponseHeader("X-Gateway", "spring-cloud-gateway") // ✅ Mark response as from gateway
                                 .retry(config -> config.setRetries(3)
                                         .setStatuses(HttpStatus.INTERNAL_SERVER_ERROR,
                                                 HttpStatus.BAD_GATEWAY,
@@ -100,13 +103,22 @@ public class GatewayRoutesConfig {
                 .route("customers", r -> r
                         .path("/customers/**")
                         .filters(f -> f
-                                .addRequestHeader("X-From-Gateway", "true")
-                                .retry(config -> config.setRetries(2)
-                                        .setStatuses(HttpStatus.INTERNAL_SERVER_ERROR,
-                                                HttpStatus.BAD_GATEWAY,
-                                                HttpStatus.SERVICE_UNAVAILABLE))
+                                .addRequestHeader("X-From-Gateway", "true")  //✅ Mark request as from gateway
+                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")  // ✅Mark response as from gateway
                                 .circuitBreaker(cb -> cb.setName("customersCb")
-                                        .setFallbackUri("forward:/fallback/customers"))
+                                        .setFallbackUri("forward:/fallback/customers")
+                                        .addStatusCode("500")
+                                        .addStatusCode("501")
+                                        .addStatusCode("503"))
+                                .retry(config -> config
+                                        .setRetries(2)
+                                        .setMethods(HttpMethod.GET) // Safe to retry
+                                        .setStatuses(
+                                                HttpStatus.INTERNAL_SERVER_ERROR,
+                                                HttpStatus.BAD_GATEWAY,
+                                                HttpStatus.SERVICE_UNAVAILABLE,
+                                                HttpStatus.GATEWAY_TIMEOUT)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true))
                                 // ✅ Apply custom rate limiter
                                 .filter(customRequestRateLimiterGatewayFilterFactory
                                         .apply(new RequestRateLimiterGatewayFilterFactory.Config()))

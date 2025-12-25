@@ -58,7 +58,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/customers/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/init").permitAll()
 
-                        .pathMatchers("/public/**", "/actuator/**", "/fallback/**").permitAll()
+                        .pathMatchers("/customers/public/**", "/actuator/**", "/fallback/**",  "/customers/error/**").permitAll()
                         .anyExchange().authenticated()
                 )
                 // Add JWT filter

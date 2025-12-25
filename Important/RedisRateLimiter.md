@@ -24,7 +24,7 @@
 ```
 
 
-# H1 **`RedisRateLimiter`** in Spring Cloud Gateway provides distributed, per-client rate limiting using Redis as a centralized store. 
+# **`RedisRateLimiter`** in Spring Cloud Gateway provides distributed, per-client rate limiting using Redis as a centralized store. 
 It implements a token bucket algorithm, ensuring consistent limits across multiple gateway instances.
 Each incoming request is assigned a key (for example, a client UUID or user ID) via a KeyResolver. For that key, Redis maintains a bucket of tokens:
   - **replenishRate**: number of tokens added to the bucket per second
