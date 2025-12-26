@@ -1,3 +1,27 @@
+# Logging  level
+1. FATAL/SEVERE - Critical errors that cause application termination
+2. ERROR - Serious errors that don't stop the application but need immediate attention
+3. WARN - Warning messages about potential problems or unexpected situations
+4. INFO - Informational messages about normal application flow
+5. DEBUG - Detailed diagnostic information useful during development
+6. TRACE - Very fine-grained information, more detailed than DEBUG
+
+We can set application-wide logging level in application.properties:
+```properties
+logging.level.root=INFO
+```
+
+Or we can set logging level for specific packages:
+```properties
+logging.level.org.springframework.web=DEBUG
+logging.level.com.saha.amit.gateway=TRACE
+```
+But one logging level can be overridden by another if there are multiple configurations. The most specific configuration takes precedence. For e.g. for spring cloud gateway the DEBUG level will be replaced by INFO for Gateway package.
+```properties
+logging.level.root=${LOG_LEVEL_ROOT:DEBUG}
+logging.level.org.springframework.cloud.gateway=${LOG_LEVEL_GATEWAY:INFO}
+```
+
 # Distributed Tracing Setup Guide
 ## 1. Add tracing dependencies (Gateway + all services)
 ```xml
