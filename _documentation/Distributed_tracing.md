@@ -178,7 +178,16 @@ management:
       tag-fields:  # Add baggage as span tags
         - clientId
 ```
+```properties
+# Fields to propagate via HTTP headers
+management.tracing.baggage.remote-fields=clientId, userId, sessionId
+# Fields to add to MDC (logs)
+management.tracing.baggage.correlation.enabled=true
+management.tracing.baggage.correlation.fields=clientId, userId
+# Custom baggage configuration
+management.tracing.baggage.tag-fields=clientId
 
+```
 **What each does:**
 - `remote-fields`: Baggage keys sent in `baggage` HTTP header
 - `correlation.fields`: Baggage keys added to MDC for logging

@@ -10,6 +10,8 @@ import com.saha.amit.customer.util.CustomerServiceUtil;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -26,11 +28,17 @@ import java.util.Map;
 @RestController
 @RequestMapping("/customers")
 @RequiredArgsConstructor
+@RefreshScope
 public class CustomerController {
 
     private final CustomerService service;
     private final CustomerRepository repository;
     private final CustomerServiceUtil customerServiceUtil;
+
+    @Value("${app.simulation.num:0}")
+    private int num;
+
+
 
     @GetMapping
     public ResponseEntity<Flux<CustomerEntity>> list() {
@@ -189,7 +197,7 @@ public class CustomerController {
     public String dummySuccess() {
         // Any unhandled RuntimeException replicates a 500 Internal Server Error
         log.info("Simulating Successful request");
-        return "Health check OK";
+        return "Health check OK" + " Num=" + num;
     }
 
 
