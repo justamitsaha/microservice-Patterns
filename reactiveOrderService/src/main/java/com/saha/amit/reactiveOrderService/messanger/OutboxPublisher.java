@@ -50,6 +50,7 @@ public class OutboxPublisher {
         log.info("Starting OutboxPublisher with pollInterval={} batchSize={}", pollInterval, batchSize);
         subscription = Flux.interval(Duration.ZERO, pollInterval)
                 .flatMap(tick -> outboxRepository.findNextBatch(Instant.now(), batchSize))
+                .doOnNext(orderOutboxEntity -> log.info("Dispatching outbox record id={} attempt={}", orderOutboxEntity.getId(), orderOutboxEntity.getAttempts()))
                 .flatMap(this::publishOutboxRecord, 1)
                 .onErrorContinue((ex, record) -> log.error("Outbox dispatch errored: {}", ex.getMessage()))
                 .subscribe();
@@ -67,8 +68,14 @@ public class OutboxPublisher {
             OrderEvent event = deserialize(entity);
             return orderEventPublisher.publish(event, useProtobuf)
                     .then(updateStatus(entity, OutboxStatus.PUBLISHED, null))
-                    .doOnSuccess(ignored -> meterRegistry.counter("order.outbox.published").increment())
-                    .doOnError(ex -> meterRegistry.counter("order.outbox.failed").increment())
+                    .doOnSuccess(ignored -> {
+                        log.info("Outbox record id={} published successfully", entity.getId());
+                        meterRegistry.counter("order.outbox.published").increment();
+                    })
+                    .doOnError(ex -> {
+                        log.error("Failed to publish outbox record id={}: {}", entity.getId(), ex.getMessage());
+                        meterRegistry.counter("order.outbox.failed").increment();
+                    })
                     .onErrorResume(ex -> updateForRetry(entity, ex));
         });
     }

@@ -24,7 +24,7 @@ public class OrderService {
         }
 
         return outboxService.persistOrderAndOutbox(customerId, amount)
-                .doOnSuccess(event -> log.info("Order {} queued for publishing via outbox", event.orderId()));
+                .doOnSuccess(event -> log.info("Order {} persisted in Outbox tables and queued for publishing via outbox", event.orderId()));
     }
 
     public Mono<OrderEntity> getOrderById(String orderId) {

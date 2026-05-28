@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # 🧩 Zookeeper - Coordination service (Strictly limited)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      TZ: Asia/Kolkata
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    ports:
+      - "2181:2181"
+    # --- 1. FIXED HEALTHCHECK: Added '-w 1' timeout to netcat to prevent hanging.
+    healthcheck:
+      test: ["CMD-SHELL", "zookeeper-shell localhost:2181 <<< 'ls /' > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
+
+  # 🦜 Kafka Broker 1 - Core message broker (JVM needs a bit more room)
+  kafka1:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka1
+    # --- UPDATED DEPENDENCY: Waits until zookeeper reports as 'healthy'.
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./kafka-config/kafka-single.properties:/etc/kafka/server.properties
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      TZ: Asia/Kolkata
+    command: ["sh", "-c", "exec kafka-server-start /etc/kafka/server.properties"]
+    # --- ADDED HEALTHCHECK: Checks if the client port is accepting connections.
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s # Gives the Kafka JVM more time to start up
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: '1.0'
+
+  # 📜 Schema Registry - Stores and validates schemas (JVM limited)
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.0
+    container_name: schema-registry
+    # --- UPDATED DEPENDENCY: Waits until kafka1 reports as 'healthy'.
+    depends_on:
+      kafka1:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka1:19092"
+      TZ: Asia/Kolkata
+    command: >
+      /bin/bash -c "
+        /etc/confluent/docker/run"
+    # --- ADDED HEALTHCHECK: Checks the public /subjects endpoint to confirm readiness.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+
+  # ⚡ Redis - In-memory data store (Very strict limit)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    environment:
+      - TZ=Asia/Kolkata
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.2'
+
+volumes:
+  loki-data:
+  kafka_data:
+  zookeeper_data:
+  zookeeper_log:

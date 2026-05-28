@@ -66,8 +66,13 @@ public class OrderEventPublisher {
     private Mono<Void> publishAsJson(OrderEvent event) {
         SenderRecord<String, OrderEvent, OrderEvent> record =
                 SenderRecord.create(new ProducerRecord<>(orderTopic, event.eventId(), event), event);
+        log.info("Publishing event as JSON to topic {}: {}", orderTopic, event);
 
         return jsonKafkaSender.send(Mono.just(record))
+                .doOnSubscribe(s -> log.info("Kafka send subscribed"))
+                .doOnNext(r -> log.info("Kafka ack received"))
+                .doOnError(e -> log.error("Kafka send error", e))
+                .doOnCancel(() -> log.warn("Kafka send cancelled"))
                 .timeout(Duration.ofSeconds(10))
                 .flatMap(this::handleJsonResult)
                 .then();
@@ -75,11 +80,16 @@ public class OrderEventPublisher {
 
     private Mono<Void> publishAsProtobuf(OrderEvent event) {
         OrderEventMessage message = OrderEventProtoMapper.toProto(event);
+        log.info("Publishing event as Protobuf to topic {}: {}", orderProtoTopic, message);
 
         SenderRecord<String, OrderEventMessage, OrderEventMessage> record =
                 SenderRecord.create(new ProducerRecord<>(orderProtoTopic, event.eventId(), message), message);
 
         return protobufKafkaSender.send(Mono.just(record))
+                .doOnSubscribe(s -> log.info("Kafka send Protobuf subscribed"))
+                .doOnNext(r -> log.info("Kafka Protobuf ack received"))
+                .doOnError(e -> log.error("Kafka Protobuf send error", e))
+                .doOnCancel(() -> log.warn("Kafka Protobuf send cancelled"))
                 .timeout(Duration.ofSeconds(10))
                 .flatMap(this::handleProtobufResult)
                 .then();

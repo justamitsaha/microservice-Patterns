@@ -29,7 +29,7 @@ public class GatewayRoutesConfig {
         return exchange -> {
             String clientId =
                     exchange.getRequest().getHeaders().getFirst("X-Client-Id");
-            logger.info("🔑 KeyResolver resolved key = {}", clientId);
+            logger.debug("🔑 KeyResolver resolved key = {}", clientId);
             return Mono.justOrEmpty(clientId)
                     .switchIfEmpty(Mono.error(new ResponseStatusException(
                             HttpStatus.BAD_REQUEST, "Missing X-Client-Id"
@@ -51,7 +51,7 @@ public class GatewayRoutesConfig {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getPath().value();
             String clientId = exchange.getRequest().getHeaders().getFirst("X-Client-Id");
-            logger.info("➡️ Gateway received request {} with X-Client-Id={}", path, clientId);
+            logger.debug("➡️ Gateway received request {} with X-Client-Id={}", path, clientId);
             return chain.filter(exchange);
         };
     }
