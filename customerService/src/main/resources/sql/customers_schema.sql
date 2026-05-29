@@ -19,6 +19,24 @@ CREATE TABLE IF NOT EXISTS customers (
 
 CREATE INDEX idx_customers_created_at ON customers (created_at);
 
+-- postgress
+-- Create the schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS microservice;
+
+-- Create the table inside the schema
+CREATE TABLE IF NOT EXISTS microservice.customers (
+                                                      id              BIGSERIAL PRIMARY KEY,
+                                                      name            VARCHAR(255) NOT NULL,
+    email           VARCHAR(255) NOT NULL,
+    created_at      BIGINT NOT NULL,
+    password_salt   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255) NOT NULL,
+    CONSTRAINT uq_customers_email UNIQUE (email)
+    );
+
+-- Create the index inside the schema
+CREATE INDEX idx_customers_created_at ON microservice.customers (created_at);
+
 
 -- If your MySQL version does NOT allow DEFAULT (uuid()), run this instead:
 -- ALTER TABLE customers MODIFY id CHAR(36) NOT NULL PRIMARY KEY;

@@ -2,6 +2,28 @@
 
 This repository demonstrates microservice patterns on Spring Boot WebFlux with resilience, discovery, gateway, and centralized configuration.
 
+## Local set up
+1. The micoservices are dependent on MySQL, Kafka, and Redis. You can run these locally or use the provided Docker Compose setup which includes all dependencies and services.To start run [docker-compose-1node-kafka-redis.yaml](setup/docker-compose-1node-kafka-redis.yaml) from the `setup` folder:
+   ```bash
+   cd _setup/docker-compose
+   docker compose -f docker-compose-1node-kafka-redis.yaml up -d
+   ```
+   This will start MySQL, a single-node Kafka cluster, and Redis. The Spring Boot services will connect to these dependencies as configured in their `application.properties` files.
+2. Start the Spring Boot services in the following order:
+   - Discovery Service: `cd discoveryService && ./mvnw spring-boot:run`
+   - Config Service: `cd configService && ./mvnw spring-boot:run`
+   - Order Service: `cd reactiveOrderService && ./mvnw spring-boot:run`
+   - Customer Service: `cd customerService && ./mvnw spring-boot:run`
+   - API Gateway: `cd gatewayService && ./mvnw spring-boot:run` (listens on `8085`)
+3. Access the services:
+   - Eureka Dashboard: `http://localhost:8761`
+   - API Gateway: `http://localhost:8085`
+   - Order Service Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+   - Customer Service Swagger UI: `http://localhost:8081/swagger-ui/index.html`
+4. You can also run the Angular web app to interact with the services via the gateway:
+   - `cd webapp`
+   - `npm install`
+
 ## Architecture
 - reactiveOrderService
   - Reactive order domain service with R2DBC persistence and Kafka outbox, retry, and DLQ flows.
