@@ -33,9 +33,9 @@ public class JwtAuthorizationFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-//        if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
-//            return chain.filter(exchange); // skip preflight
-//        }
+        if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
+            return chain.filter(exchange); // skip preflight
+        }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 

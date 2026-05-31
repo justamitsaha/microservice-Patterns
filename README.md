@@ -24,6 +24,46 @@ This repository demonstrates microservice patterns on Spring Boot WebFlux with r
    - `cd webapp`
    - `npm install`
 
+## API
+
+### 1. Gateway
+The `gatewayService` acts as the central entry point (Edge Server) for all client requests. It provides the following cross-cutting functionalities:
+ **Dynamic Routing:**
+  - Routes requests to microservices using Eureka Service Discovery (`lb://order-service`, `lb://customer-service`).
+  - Supports path-based routing: `/orders/**` and `/customers/**`. API gateway also supports host-based, header-based, query param-based etc. but those are not used in this demo.
+- **Resilience (Resilience4j):**
+    - **Circuit Breaker:** Named breakers (`ordersCb`, `customersCb`) with fallbacks to local controllers returning 503 Service Unavailable JSON responses.
+    - **Retries:**
+        - Orders: 3 retries on 5xx errors.
+        - Customers: 2 retries (GET only) with exponential backoff on 5xx and timeouts.
+- **Security:**
+  - **JWT Validation:** Stateless authentication via `JwtAuthorizationFilter`. Validates `Bearer` tokens in the `Authorization` header.
+  - **CORS:** Configured to allow requests from the Angular webapp (supports `localhost:4200` and Dockerized `localhost:8087`).
+- **Rate Limiting:**
+  - **Redis-backed:** Uses `RedisRateLimiter` with a limit of 10 requests/sec and a burst capacity of 20.
+  - **Key Identification:** Limits are applied per client based on the `X-Client-Id` HTTP header.
+- **Custom Filters & Headers:**
+  - **Request Decoration:** Adds `X-From-Gateway: true` to all proxied requests.
+  - **Response Decoration:** Adds `X-Gateway: spring-cloud-gateway` to all client responses.
+  - **Logging Filter:** A global filter logs every incoming request path and `X-Client-Id`.
+- **Internal Handlers:**
+  - **Initialization:** Direct handling of `/init` to generate and return a `clientId` (via `InitGatewayFilter`).
+  - **Fallbacks:** Internal controller to handle circuit breaker triggers (`/fallback/**`).
+- **Observability:**
+  - **Metrics:** Exposes Prometheus metrics via Micrometer at `/actuator/prometheus`.
+  - **Tracing:** Integrated with OpenTelemetry for distributed tracing.
+
+## Endpoints
+### Initialization Endpoint (`/init`)
+The API Gateway exposes a special `/init` endpoint.
+- **Location:** Defined in `gatewayService` via `GatewayRoutesConfig` and handled by `InitGatewayFilter`.
+- **Purpose:** When invoked (e.g., via `POST /init`), it intercepts the request at the gateway level, generates a unique `clientId` (UUID), and immediately returns it as a JSON response (`{"clientId": "<uuid>"}`). This is useful for initial client handshake or session tracking without needing to route to a backend service.
+- **CORS & Preflight:** 
+  - The gateway is configured to allow `OPTIONS` preflight requests for this endpoint.
+  - Supported origins include `http://localhost:4200` (Angular dev server) and `http://localhost:8087` (Dockerized Angular app).
+  - The `JwtAuthorizationFilter` is configured to skip validation for `OPTIONS` requests to ensure preflight succeeds without a token.
+  - In the Dockerized webapp, Nginx is configured with `absolute_redirect off;` to preserve the host and port during redirects (e.g., from `/web` to `/web/`).
+
 ## Architecture
 - reactiveOrderService
   - Reactive order domain service with R2DBC persistence and Kafka outbox, retry, and DLQ flows.

@@ -22,7 +22,7 @@ export const apiInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, nex
       console.log('[API-INTERCEPTOR] X-Client-Id attached');
     }
 
-  return next(req).pipe(
+  return next(modifiedReq).pipe(
     tap({
       next: (event) => {
         if (event instanceof HttpResponse) {

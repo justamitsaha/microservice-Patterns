@@ -33,8 +33,7 @@ public class SecurityConfig {
 
         return http
                 // ✅ Enable CORS
-                //.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .cors(ServerHttpSecurity.CorsSpec::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 // 🧩 Disable Basic Auth pop-up
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
@@ -66,15 +65,14 @@ public class SecurityConfig {
                 .build();
     }
 
-    /*
-    This bean is not needed as Spring Cloud Gateway global CORS is already configured in application.properties
-    // ✅ CORS bean defined above
+
+    // ✅ CORS bean
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(List.of("http://localhost:4200"));
+        corsConfig.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:8087"));
         corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        corsConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        corsConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-Client-Id"));
         corsConfig.setExposedHeaders(List.of("Authorization"));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
@@ -82,6 +80,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", corsConfig);
         return source;
-    }*/
+    }
 }
 

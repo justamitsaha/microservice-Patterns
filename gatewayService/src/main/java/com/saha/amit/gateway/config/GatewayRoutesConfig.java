@@ -11,6 +11,8 @@ import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,89 +24,114 @@ import java.time.Duration;
 public class GatewayRoutesConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(GatewayRoutesConfig.class);
+    private final ReactiveStringRedisTemplate redisTemplate;
 
-    // 1️⃣ Simple key resolver — rate limit based on X-Client-Id header
+    public GatewayRoutesConfig(ReactiveStringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    // 1️⃣ Key resolver based on 'client_token' cookie (Anonymous session identification)
+    @Bean
+    public KeyResolver cookieKeyResolver() {
+        return exchange -> {
+            HttpCookie cookie = exchange.getRequest().getCookies().getFirst("client_token");
+            String token = (cookie != null) ? cookie.getValue() : null;
+            logger.debug("🔑 cookieKeyResolver resolved token = {}", token);
+            return Mono.justOrEmpty(token);
+        };
+    }
+
+    // 2️⃣ Key resolver based on Remote IP Address (Fallback for cookie-less or rotated requests)
+    @Bean
+    public KeyResolver ipKeyResolver() {
+        return exchange -> {
+            String ip = exchange.getRequest().getRemoteAddress() != null ?
+                    exchange.getRequest().getRemoteAddress().getAddress().getHostAddress() : "unknown";
+            logger.debug("🔑 ipKeyResolver resolved IP = {}", ip);
+            return Mono.just(ip);
+        };
+    }
+
+    // Existing KeyResolver for backward compatibility or authenticated requests
     @Bean
     public KeyResolver clientIdKeyResolver() {
         return exchange -> {
             String clientId =
                     exchange.getRequest().getHeaders().getFirst("X-Client-Id");
             logger.debug("🔑 KeyResolver resolved key = {}", clientId);
-            return Mono.justOrEmpty(clientId)
-                    .switchIfEmpty(Mono.error(new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST, "Missing X-Client-Id"
-                    )));
+            return Mono.justOrEmpty(clientId);
         };
     }
 
 
-    // 2️⃣ Redis rate limiter — 10 requests/sec, burst up to 20
+    // 3️⃣ Redis rate limiters
     @Bean
-    public RedisRateLimiter clientRateLimiter() {
-        return new RedisRateLimiter(
-                10, 20
-        );
+    public RedisRateLimiter tokenRateLimiter() {
+        return new RedisRateLimiter(5, 10); // Token limit: 5 req/s
+    }
+
+    @Bean
+    public RedisRateLimiter ipRateLimiter() {
+        return new RedisRateLimiter(2, 5); // Strict IP limit: 2 req/s
     }
 
     @Bean
     public GlobalFilter logClientIdFilter() {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getPath().value();
-            String clientId = exchange.getRequest().getHeaders().getFirst("X-Client-Id");
-            logger.debug("➡️ Gateway received request {} with X-Client-Id={}", path, clientId);
+            HttpCookie cookie = exchange.getRequest().getCookies().getFirst("client_token");
+            String token = (cookie != null) ? cookie.getValue() : "none";
+            logger.debug("➡️ Gateway received request {} with client_token={}", path, token);
             return chain.filter(exchange);
         };
     }
 
 
-    // 3️⃣ Custom factory bean (renamed to avoid conflict with GatewayAutoConfiguration)
-    @Bean
-    public RequestRateLimiterGatewayFilterFactory customRequestRateLimiterGatewayFilterFactory(
-            RedisRateLimiter clientRateLimiter,
-            KeyResolver clientIdKeyResolver) {
-
-        RequestRateLimiterGatewayFilterFactory factory =
-                new RequestRateLimiterGatewayFilterFactory(
-                        clientRateLimiter,
-                        clientIdKeyResolver
-                );
-
-        factory.setEmptyKeyStatusCode(HttpStatus.TOO_MANY_REQUESTS.name());
-        return factory;
-    }
-
-
-    // 4️⃣ Define all routes and apply rate limiter
+    // 4️⃣ Define all routes and apply tiered rate limiting
     @Bean
     public RouteLocator customRouteLocator(
             RouteLocatorBuilder routes,
-            RequestRateLimiterGatewayFilterFactory customRequestRateLimiterGatewayFilterFactory) {
+            RequestRateLimiterGatewayFilterFactory rateLimiterFactory,
+            KeyResolver cookieKeyResolver,
+            KeyResolver ipKeyResolver,
+            RedisRateLimiter tokenRateLimiter,
+            RedisRateLimiter ipRateLimiter) {
 
         return routes.routes()
-                // Orders route
+                // Orders route (Still uses basic rate limiting for now)
                 .route("orders", r -> r
                         .path("/orders/**")
                         .filters(f -> f
-                                .addRequestHeader("X-From-Gateway", "true") // ✅ Mark request as from gateway
-                                .addResponseHeader("X-Gateway", "spring-cloud-gateway") // ✅ Mark response as from gateway
+                                .addRequestHeader("X-From-Gateway", "true")
+                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")
                                 .retry(config -> config.setRetries(3)
                                         .setStatuses(HttpStatus.INTERNAL_SERVER_ERROR,
                                                 HttpStatus.BAD_GATEWAY,
                                                 HttpStatus.SERVICE_UNAVAILABLE))
                                 .circuitBreaker(cb -> cb.setName("ordersCb")
                                         .setFallbackUri("forward:/fallback/orders"))
-                                // ✅ Apply custom rate limiter
-                                .filter(customRequestRateLimiterGatewayFilterFactory
-                                        .apply(new RequestRateLimiterGatewayFilterFactory.Config()))
                         )
                         .uri("lb://order-service"))
 
-                // Customers route
+                // Public Customers route (Tiered Rate Limiting: Token then IP)
+                .route("public-customers", r -> r
+                        .path("/customers/public/**")
+                        .filters(f -> f
+                                .addRequestHeader("X-From-Gateway", "true")
+                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")
+                                // Tier 1: Per Token
+                                .requestRateLimiter(c -> c.setRateLimiter(tokenRateLimiter).setKeyResolver(cookieKeyResolver))
+                                // Tier 2: Per IP (as fallback/secondary protection)
+                                .requestRateLimiter(c -> c.setRateLimiter(ipRateLimiter).setKeyResolver(ipKeyResolver))
+                        )
+                        .uri("lb://customer-service"))
+
+                // Main Customers route
                 .route("customers", r -> r
                         .path("/customers/**")
                         .filters(f -> f
-                                .addRequestHeader("X-From-Gateway", "true")  //✅ Mark request as from gateway
-                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")  // ✅Mark response as from gateway
+                                .addRequestHeader("X-From-Gateway", "true")
+                                .addResponseHeader("X-Gateway", "spring-cloud-gateway")
                                 .circuitBreaker(cb -> cb.setName("customersCb")
                                         .setFallbackUri("forward:/fallback/customers")
                                         .addStatusCode("500")
@@ -112,36 +139,23 @@ public class GatewayRoutesConfig {
                                         .addStatusCode("503"))
                                 .retry(config -> config
                                         .setRetries(2)
-                                        .setMethods(HttpMethod.GET) // Safe to retry
+                                        .setMethods(HttpMethod.GET)
                                         .setStatuses(
                                                 HttpStatus.INTERNAL_SERVER_ERROR,
                                                 HttpStatus.BAD_GATEWAY,
                                                 HttpStatus.SERVICE_UNAVAILABLE,
                                                 HttpStatus.GATEWAY_TIMEOUT)
                                         .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true))
-                                // ✅ Apply custom rate limiter
-                                .filter(customRequestRateLimiterGatewayFilterFactory
-                                        .apply(new RequestRateLimiterGatewayFilterFactory.Config()))
+                                // Protect authenticated/session customers too
+                                .requestRateLimiter(c -> c.setRateLimiter(tokenRateLimiter).setKeyResolver(cookieKeyResolver))
                         )
                         .uri("lb://customer-service"))
-                // Don't remember why I added these prefix rewrite routes. Commenting out for now.
-/*               // Orders API prefix rewrite
-                .route("orders-api", r -> r
-                        .path("/api/orders/{segment}", "/api/orders/{segment}/**")
-                        .filters(f -> f.rewritePath("/api/orders/(?<segment>.*)", "/orders/${segment}"))
-                        .uri("lb://order-service"))
-
-                // Customers API prefix rewrite
-                .route("customers-api", r -> r
-                        .path("/api/customers/{segment}", "/api/customers/{segment}/**")
-                        .filters(f -> f.rewritePath("/api/customers/(?<segment>.*)", "/customers/${segment}"))
-                        .uri("lb://customer-service"))*/
 
                 //Init route
                 .route("init", r -> r
                         .path("/init")
-                        .filters(f -> f.filter(new InitGatewayFilter()))
-                        .uri("no://op") // important
+                        .filters(f -> f.filter(new InitGatewayFilter(redisTemplate)))
+                        .uri("no://op")
                 )
                 .build();
     }

@@ -43,3 +43,4 @@ mongo-data
 
 ### Environment Files ###
 *.env
+temp/
