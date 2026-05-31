@@ -199,7 +199,8 @@ Gateway routes (via discovery):
 - Purpose: simple UI to exercise customers and orders APIs via the gateway.
 - Proxy: `webapp/proxy.conf.json` forwards `/api` to `http://localhost:8085`.
 - Usage:
-  - Customers tab: create/list customers, click a row to fetch orders for that customer.
+  - Login page: login or register a new customer account.
+  - Customers tab: list customers, click a row to fetch orders for that customer.
   - Orders tab: create/list orders; filter by `customerId`.
 - Key files:
   - `webapp/src/app/services/api.service.ts`: API client using Angular HttpClient.

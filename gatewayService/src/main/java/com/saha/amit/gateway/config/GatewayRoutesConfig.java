@@ -11,11 +11,11 @@ import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -32,6 +32,7 @@ public class GatewayRoutesConfig {
 
     // 1️⃣ Key resolver based on 'client_token' cookie (Anonymous session identification)
     @Bean
+    @Primary
     public KeyResolver cookieKeyResolver() {
         return exchange -> {
             HttpCookie cookie = exchange.getRequest().getCookies().getFirst("client_token");
@@ -53,7 +54,7 @@ public class GatewayRoutesConfig {
     }
 
     // Existing KeyResolver for backward compatibility or authenticated requests
-    @Bean
+    /*@Bean
     public KeyResolver clientIdKeyResolver() {
         return exchange -> {
             String clientId =
@@ -61,11 +62,12 @@ public class GatewayRoutesConfig {
             logger.debug("🔑 KeyResolver resolved key = {}", clientId);
             return Mono.justOrEmpty(clientId);
         };
-    }
+    }*/
 
 
     // 3️⃣ Redis rate limiters
     @Bean
+    @Primary
     public RedisRateLimiter tokenRateLimiter() {
         return new RedisRateLimiter(5, 10); // Token limit: 5 req/s
     }

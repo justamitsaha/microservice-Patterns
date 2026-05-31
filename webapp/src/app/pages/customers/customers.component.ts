@@ -13,9 +13,6 @@ import { Customer } from '../../models';
 })
 export class CustomersComponent implements OnInit {
   customers: Customer[] = [];
-  name = '';
-  email = '';
-  password = '';
   error = '';
 
   constructor(private api: ApiService) {}
@@ -27,17 +24,6 @@ export class CustomersComponent implements OnInit {
   load() {
     this.api.listCustomers().subscribe({
       next: cs => { this.customers = cs; this.error = ''; },
-      error: err => this.error = err.message
-    });
-  }
-
-  create() {
-    const name = this.name.trim();
-    const email = this.email.trim();
-    const password = this.password.trim();
-    if (!name || !email || !password) return;
-    this.api.createCustomer({ name, email, password } as any).subscribe({
-      next: _ => { this.name = ''; this.email = ''; this.load(); },
       error: err => this.error = err.message
     });
   }

@@ -41,8 +41,8 @@ public class CustomerController {
 
 
     @GetMapping
-    public ResponseEntity<Flux<CustomerEntity>> list() {
-        return ResponseEntity.ok(service.findAll());
+    public Flux<CustomerEntity> list() {
+        return service.findAll();
     }
 
     @GetMapping("/{id}")
@@ -54,9 +54,9 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<Mono<CustomerEntity>> register(@RequestBody CustomerRequest request) {
+    public Mono<CustomerEntity> register(@RequestBody CustomerRequest request) {
         log.info("Registering new customer with email: {}", request);
-        return ResponseEntity.ok(service.create(request));
+        return service.create(request);
     }
 
     @PutMapping("/{id}")

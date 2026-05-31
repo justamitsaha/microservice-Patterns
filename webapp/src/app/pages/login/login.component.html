@@ -1,10 +1,18 @@
 <div class="container">
-  <h2>Login</h2>
-  <form (ngSubmit)="submit()" style="display:flex; gap:8px; margin-bottom:12px;">
+  <h2>{{ isLoginMode ? 'Login' : 'Register' }}</h2>
+  <form (ngSubmit)="submit()" style="display:flex; flex-direction:column; gap:8px; max-width: 300px; margin-bottom:12px;">
+    <input *ngIf="!isLoginMode" name="name" [(ngModel)]="name" placeholder="Name" required>
     <input name="email" [(ngModel)]="email" placeholder="Email" required>
     <input name="password" [(ngModel)]="password" placeholder="Password" type="password" required>
-    <button type="submit">Login</button>
+    <button type="submit">{{ isLoginMode ? 'Login' : 'Register' }}</button>
   </form>
-  <div>{{message}}</div>
+  
+  <div style="margin-bottom: 12px;">
+    <a href="javascript:void(0)" (click)="toggleMode()">
+      {{ isLoginMode ? 'Need an account? Register here' : 'Already have an account? Login here' }}
+    </a>
+  </div>
+
+  <div *ngIf="message" [class.error]="message.includes('fail') || message.includes('Invalid')">{{message}}</div>
 </div>
 

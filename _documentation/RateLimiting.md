@@ -12,6 +12,108 @@ To protect public and private APIs from abuse while maintaining a smooth user ex
 4.  **HttpOnly Cookie:** The Gateway returns the `client_token` in an `HttpOnly`, `SameSite=Strict` cookie named `client_token`.
 5.  **Session Tracking:** Subsequent requests from the browser automatically include this cookie.
 
+
+1. Step 1: User calls `/init`. 
+Gateway executes: `String clientToken = UUID.randomUUID().toString(); `. This generates a unique identifier for the client session. Example: `f4a8f5d2-c8d2-4d2d-9b1c-123456789abc`. This is stored in Redis: ` client_metadata:f4a8f5d2-c8d2-4d2d-9b1c-123456789abc` This is sent back to the client as an HttpOnly cookie: Response cookie: `Set-Cookie:client_token=f4a8f5d2-c8d2-4d2d-9b1c-123456789abc`
+
+2. Step 2: Request hits /customers/public/** For this route we have two layers of rate limiting which intercepts the request:
+    ```java
+                    // Public Customers route (Tiered Rate Limiting: Token then IP)
+                    .route("public-customers", r -> r
+                            .path("/customers/public/**")
+                            .filters(f -> f
+                                    .addRequestHeader("X-From-Gateway", "true")
+                                    .addResponseHeader("X-Gateway", "spring-cloud-gateway")
+                                    // Tier 1: Per Token
+                                    .requestRateLimiter(c -> c.setRateLimiter(tokenRateLimiter).setKeyResolver(cookieKeyResolver))
+                                    // Tier 2: Per IP (as fallback/secondary protection)
+                                    .requestRateLimiter(c -> c.setRateLimiter(ipRateLimiter).setKeyResolver(ipKeyResolver))
+                            )
+                            .uri("lb://customer-service"))
+    ```
+3. The key resolver extracts the `client_token` from the cookie using the `cookieKeyResolver` and returns the `client_token` value as the key for rate limiting. For example, if the generated token like this: `4a8f5d2-c8d2-4d2d-9b1c-123456789abc`, then the `cookieKeyResolver` will extract this token from the cookie and use it as the key for the RedisRateLimiter. The RedisRateLimiter will then track the number of requests associated with this token and apply the defined rate limits accordingly.
+
+    ```java
+        // 1️⃣ Key resolver based on 'client_token' cookie (Anonymous session identification)
+    @Bean
+    @Primary
+    public KeyResolver cookieKeyResolver() {
+        return exchange -> {
+            HttpCookie cookie = exchange.getRequest().getCookies().getFirst("client_token");
+            String token = (cookie != null) ? cookie.getValue() : null;
+            logger.debug("🔑 cookieKeyResolver resolved token = {}", token);
+            return Mono.justOrEmpty(token);
+        };
+    }
+    
+    // 2️⃣ Key resolver based on Remote IP Address (Fallback for cookie-less or rotated requests)
+    @Bean
+    public KeyResolver ipKeyResolver() {
+        return exchange -> {
+            String ip = exchange.getRequest().getRemoteAddress() != null ?
+                    exchange.getRequest().getRemoteAddress().getAddress().getHostAddress() : "unknown";
+            logger.debug("🔑 ipKeyResolver resolved IP = {}", ip);
+            return Mono.just(ip);
+        };
+    }
+    ```
+
+4. Then redis rate limiter comes into play. The `tokenRateLimiter` allows 5 requests per second for each unique `client_token`, while the `ipRateLimiter` allows only 2 requests per second for each IP address. This means that if a client exceeds the token-based limit, they will receive a `429 Too Many Requests` response. 
+    ```java
+        // 3️⃣ Redis rate limiters
+        @Bean
+        @Primary
+        public RedisRateLimiter tokenRateLimiter() {
+            return new RedisRateLimiter(5, 10); // Token limit: 5 req/s
+        }
+    
+        @Bean
+        public RedisRateLimiter ipRateLimiter() {
+            return new RedisRateLimiter(2, 5); // Strict IP limit: 2 req/s
+        }
+    ```
+    Examples:
+    
+    | Requests | Result |
+    | --- | --- |
+    | 5/sec | Allowed |
+    | 8/sec | Allowed for short burst |
+    | 10 immediately | Allowed |
+    | 11th immediately | Rejected (429) |
+
+5. The IP-based limiter serves as a secondary defense mechanism, ensuring that even if a client tries to bypass the token limit (e.g., by clearing cookies), they will still be subject to rate limiting based on their IP address.The IP-based limit exists to prevent someone from bypassing the token-based limit. Without IP limiting Attacker does:
+
+    ```
+    GET /init  -> Token A
+    GET /init  -> Token B
+    GET /init  -> Token C
+    GET /init  -> Token D
+    ```
+
+    Now they have 4 valid tokens. Each token gets: `5 req/sec` . So total:
+
+    ```
+    Token A = 5 req/sec
+    Token B = 5 req/sec
+    Token C = 5 req/sec
+    Token D = 5 req/sec
+    -----------------------
+    Total    = 20 req/sec
+    ```
+    The attacker simply requests more tokens and bypasses your intended limit. With IP limiting Suppose the same attacker comes from `192.168.1.10` and gets 100 tokens. Even then: `new RedisRateLimiter(2, 5)` using `ipKeyResolver()` creates a bucket for: `192.168.1.10` All requests from that IP share the same bucket.
+    ```
+    Token A ─┐
+    Token B ─┼──> IP Bucket
+    Token C ─┤
+    Token D ─┘
+    ```
+    Result: 
+    ```
+    Per Token Limit = 5 req/sec
+    Per IP Limit    = 2 req/sec
+    ```
+    The IP limit becomes the final protection.
+
 ---
 
 ## Technical Background: RedisRateLimiter
@@ -86,6 +188,8 @@ curl -i -H "X-Client-Id: manual-test-id" http://localhost:8085/customers/public/
 ```
 
 ### Step 6: Verify Redis Metadata
-```bash
-redis-cli KEYS "client_metadata:*"
-```
+
+1. Get container name `docker ps`
+2. Access Redis CLI inside the container: `docker exec -it <redis-container-name> redis-cli` e.g.  `docker exec -it redis redis-cli`
+3. List all client metadata keys `KEYS *` or more specifically: `keys client_metadata:*`
+4. Get metadata for a specific token: `GET client_metadata:f4a8f5d2-c8d2-4d2d-9b1c-123456789abc`
