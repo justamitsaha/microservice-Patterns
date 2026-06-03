@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS customers (
 
 CREATE INDEX idx_customers_created_at ON customers (created_at);
 
--- postgress
+-- postgres
 -- Create the schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS microservice;
 

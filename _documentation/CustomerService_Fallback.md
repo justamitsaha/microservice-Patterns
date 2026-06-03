@@ -1,78 +1,95 @@
-# Customer Service Fallback and Resilience Documentation
+# Customer Service Resiliency, Fallback, and Timeout Documentation
 
-This document captures the multi-layer fallback behavior implemented for the `customerService`, both at the API Gateway level and within the service itself.
-
-## 1. Gateway-Level Fallback (Edge Protection)
-
-The API Gateway (`gatewayService`) protects the `customerService` using a dedicated circuit breaker named `customersCb`.
-
-### Configuration
-*   **Trigger:** The circuit breaker trips if the `customerService` is down, slow, or returns specific 5xx errors (500, 501, 503).
-*   **Fallback URI:** `forward:/fallback/customers`
-
-### Handling POST/PUT/DELETE Methods (The 405 Fix)
-By default, Spring Cloud Gateway preserves the original HTTP method during a forward. If a user sends a `POST` request to register a customer and the service is down, the Gateway forwards a `POST` to the fallback URI.
-
-**Implementation Note:**
-The `FallbackController` in the Gateway is configured using `@RequestMapping` (instead of `@GetMapping`) to ensure it can handle any HTTP method. This is done because say a `POST` request is failing or is having delay. In this case it will be forwarded to the fallback, if the fallback only has `@GetMapping`, it will not be able to handle the `POST` request and will return a `405 Method Not Allowed` error instead of the intended fallback response. This will confuse clients and mask the actual issue (service unavailability) with a misleading HTTP error.
-```java
-@RequestMapping("/fallback/customers")
-public ResponseEntity<Map<String, Object>> customersFallback() {
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-            .body(Map.of(
-                    "service", "customer-service",
-                    "message", "Customer service is temporarily unavailable",
-                    "status", 503
-            ));
-}
-```
+This document provides a comprehensive overview of the resilience patterns, timeout configurations, and fallback strategies implemented for the `customerService`, spanning both the API Gateway and the service itself.
 
 ---
 
-## 2. Service-Level Fallback (Internal Resilience)
+## 1. Edge Layer: API Gateway (`gatewayService`)
 
-The `customerService` makes calls to the `order-service` to aggregate customer data with their orders. This call is wrapped in a resilience pipeline using **Resilience4j**.
+The Gateway serves as the first line of defense, protecting the system from cascading failures using **Spring Cloud Circuit Breaker** (backed by Resilience4j).
 
-### Pipeline Architecture
-The `WebClient` call in `CustomerService.java` follows this execution order:
-1.  **Retry:** Handles transient network issues.
-2.  **Circuit Breaker:** Prevents cascading failures if `order-service` is unstable.
-3.  **Bulkhead:** Limits concurrent calls to protect the `customerService` resources.
-4.  **Fallback:** Executed if the pipeline fails.
+### A. Circuit Breaker Configuration (`customersCb`)
+The circuit breaker monitors requests to the `/customers/**` routes. 
+*Note: The values below are applied via the Gateway's local properties as a default, but are overridden by the Config Server for the `orderService` internal call.*
 
-### Fallback Logic (`fallbackOrders`)
-If the call to `order-service` fails (e.g., circuit is OPEN or request timed out), the system gracefully degrades by returning a placeholder response instead of failing the entire customer request.
+**Gateway-to-Customer (`customersCb`):**
+*   **Sliding Window:** 20 calls.
+*   **Failure Threshold:** 50%.
+*   **Wait Duration:** 30 seconds.
 
-```java
-private Flux<OrderResponse> fallbackOrders(Throwable ex) {
-    if (ex instanceof TimeoutException) {
-        // Return a specific placeholder for timeouts
-        return Flux.just(new OrderResponse("N/A", null, 0.0, "TIMEOUT_FALLBACK"));
-    }
-    // Return a general unavailable placeholder
-    return Flux.just(new OrderResponse("N/A", null, 0.0, "SERVICE_UNAVAILABLE"));
-}
-```
+**Customer-to-Order (`orderService`):**
+*As defined in `temp/configurationServer/customer-service.properties`:*
+*   **Sliding Window Size:** 6 calls (COUNT_BASED).
+*   **Minimum Number of Calls:** 3.
+*   **Failure Threshold:** 50%.
+*   **Wait Duration:** 10 seconds.
+*   **Half-Open Calls:** 2.
 
-### Resulting Behavior
-When the `order-service` is down, a call to `GET /customers/{id}` will still return the customer's basic details (from the DB), but the `orders` list will contain a placeholder item indicating that the order service was unavailable.
+### B. Time Limiter (Global Timeout)
+The Gateway and the Service both enforce timeouts.
+*   **Gateway (customersCb):** Default is 1s (but we increased it to 5s in `application.properties` to handle slow hashing).
+*   **Service (orderService):** Configured as 2s in both property file (`resilience4j.timelimiter.instances.orderService.timeoutDuration=2s`) and Reactor code (`.timeout(Duration.ofSeconds(2))`).
+
+### C. The "405 Method Not Allowed" Fix
+When a request fails (or times out), the Gateway forwards it to a local fallback endpoint (`/fallback/customers`).
+*   **Challenge:** Spring Cloud Gateway preserves the original HTTP method during the forward. A `POST /customers` becomes a `POST /fallback/customers`.
+*   **Solution:** The `FallbackController` uses `@RequestMapping` instead of `@GetMapping` to ensure it can handle `POST`, `PUT`, and `DELETE` requests without returning a 405 error.
 
 ---
 
-## 3. Testing Fallbacks
+## 2. Service Layer: Internal Resilience (`customerService`)
 
-### Testing Gateway Fallback
-1.  Stop the `customerService`.
-2.  Attempt to register a customer:
-    ```bash
-    curl -X POST http://localhost:8085/customers \
-         -H "Content-Type: application/json" \
-         -d '{"name":"Test","email":"test@test.com","password":"..."}'
-    ```
-3.  **Expected:** A 503 JSON response from the Gateway fallback (NOT a 405 error).
+The `customerService` aggregates data from the `order-service`. This downstream call is protected by a multi-tier resilience pipeline.
 
-### Testing Service Fallback
-1.  Ensure `customerService` and the Gateway are running.
+### A. The Resilience Pipeline Architecture
+The call to `order-service` via `WebClient` follows this strict order:
+1.  **Retry:** Attempt the call up to 2 times (for GET requests) on transient 5xx errors.
+2.  **Circuit Breaker:** If the failure rate is too high, stop calling the order service entirely to allow it to recover.
+3.  **Bulkhead:** Limit the number of concurrent calls to the order service to prevent thread/resource exhaustion in the customer service.
+4.  **Timeout:** Enforced at the Reactor level (`.timeout(Duration.ofSeconds(2))`).
+
+### B. Graceful Degradation (Fallback)
+If any stage of the pipeline fails, the `.onErrorResume(this::fallbackOrders)` method is triggered.
+*   **Logic:** Instead of failing the entire customer request, the service returns a placeholder "dummy" order with a status like `TIMEOUT_FALLBACK` or `SERVICE_UNAVAILABLE`.
+*   **User Experience:** The user still sees customer details, even if their order history is temporarily missing.
+
+---
+
+## 3. Pattern: Handling Blocking/CPU-Intensive Tasks
+
+Reactive programming (Reactor) requires that the "Event Loop" threads never be blocked.
+
+### The Challenge
+Operations like **Password Hashing** (PBKDF2 with 65,536 iterations) are CPU-intensive and "block" the thread they run on. If run on the event loop, they freeze the service for all other users.
+
+### The Pattern
+We offload these operations to a separate thread pool using the **`boundedElastic`** scheduler:
+```java
+return Mono.fromCallable(() -> {
+    // Perform CPU-heavy hashing here
+    return CustomerServiceUtil.hashPassword(password, salt);
+})
+.subscribeOn(Schedulers.boundedElastic()) // Offload to worker thread
+.flatMap(repository::save);
+```
+*Note: This ensures the high-performance event loop remains free to handle I/O, while workers handle the heavy lifting.*
+
+---
+
+## 4. Testing & Verification
+
+### Scenario 1: Gateway Timeout
+1.  Increase hashing iterations or introduce a `Thread.sleep()` in the backend.
+2.  Call registration from the browser.
+3.  **Result:** Gateway returns the 503 JSON fallback message after 5 seconds.
+
+### Scenario 2: Service-Level Fallback
+1.  Ensure the Gateway and `customerService` are running.
 2.  Stop the `order-service`.
-3.  Call the customer detail endpoint: `GET http://localhost:8085/customers/{id}`.
-4.  **Expected:** The request succeeds with HTTP 200, but the orders section shows `SERVICE_UNAVAILABLE`.
+3.  Call `GET /customers/{id}`.
+4.  **Result:** Response is `200 OK`. Customer data is present. The `orders` list contains a placeholder item with `SERVICE_UNAVAILABLE`.
+
+### Scenario 3: Method Preservation (405 Prevention)
+1.  Stop `customerService`.
+2.  Run `curl -X POST http://localhost:8085/customers`.
+3.  **Result:** Receives a proper 503 JSON body instead of a "405 Method Not Allowed" error.

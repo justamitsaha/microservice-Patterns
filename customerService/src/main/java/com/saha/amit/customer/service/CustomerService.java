@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -52,16 +53,23 @@ public class CustomerService {
     }
 
     public Mono<CustomerEntity> create(CustomerRequest req) {
-        CustomerEntity e = new CustomerEntity();
-        e.setName(req.getName());
-        e.setEmail(req.getEmail());
-        e.setCreatedAt(Instant.now().toEpochMilli());
-        String salt = generateSalt();
-        String hash = CustomerServiceUtil.hashPassword(req.getPassword(), salt);
-        e.setPasswordSalt(salt);
-        e.setPasswordHash(hash);
-        logger.info("User details for registration: {}", e);
-        return repository.save(e);
+        return Mono.fromCallable(() -> {
+            CustomerEntity e = new CustomerEntity();
+            e.setName(req.getName());
+            e.setEmail(req.getEmail());
+            e.setCreatedAt(Instant.now().toEpochMilli());
+            String salt = generateSalt();
+            String hash = CustomerServiceUtil.hashPassword(req.getPassword(), salt);
+            e.setPasswordSalt(salt);
+            e.setPasswordHash(hash);
+            logger.info("User details for registration: {}", e);
+            return e;
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .flatMap(repository::save)
+        .doOnError(ex -> logger.error("Error saving customer: {}", ex.getMessage()))
+        .doOnCancel(() -> logger.error("Customer creation cancelled"))
+        .doOnDiscard(CustomerEntity.class, discarded -> logger.warn("Discarded customer entity: {}", discarded));
     }
 
     public Mono<CustomerEntity> update(String id, CustomerRequest req) {
