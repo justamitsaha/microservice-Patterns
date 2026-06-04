@@ -12,13 +12,14 @@
   <div *ngIf="error" class="error">{{error}}</div>
 
   <table>
-    <thead><tr><th>Order ID</th><th>Customer ID</th><th>Amount</th><th>Status</th></tr></thead>
+    <thead><tr><th>Order ID</th><th>Customer ID</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>
       <tr *ngFor="let o of orders">
         <td>{{o.orderId}}</td>
         <td>{{o.customerId}}</td>
         <td>{{o.amount}}</td>
         <td>{{o.status}}</td>
+        <td><button (click)="viewDetail(o.orderId!)">View</button></td>
       </tr>
     </tbody>
   </table>

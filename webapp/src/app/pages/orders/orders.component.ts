@@ -38,5 +38,12 @@ export class OrdersComponent implements OnInit {
       error: err => this.error = err.message
     });
   }
+
+  viewDetail(id: string) {
+    this.api.getOrderById(id).subscribe({
+      next: o => alert(`Order Details:\nID: ${o.orderId}\nStatus: ${o.status}\nAmount: ${o.amount}`),
+      error: err => this.error = err.message
+    });
+  }
 }
 

@@ -35,31 +35,27 @@ public class OrderController {
     private String discountPercentage;
 
     @PostMapping
-    public ResponseEntity<Mono<OrderResponse>> placeOrder(@RequestBody OrderRequest req) {
+    public Mono<OrderResponse> placeOrder(@RequestBody OrderRequest req) {
         logger.info("Received order placement request: {}", req);
         req.setAmount(req.getAmount() - (req.getAmount() * Integer.parseInt(discountPercentage) / 100));
         logger.info("Applied discount of {}%, new amount: {}", discountPercentage, req.getAmount());
         // Simulate order processing and response
-        return ResponseEntity.ok(
-                orderService.placeOrder(req.getCustomerId(), req.getAmount())
-                        .map(event -> new OrderResponse(
-                                event.orderId(),
-                                event.customerId(),
-                                event.amount(),
-                                event.status()
-                        ))
-        );
+        return orderService.placeOrder(req.getCustomerId(), req.getAmount())
+                .map(event -> new OrderResponse(
+                        event.orderId(),
+                        event.customerId(),
+                        event.amount(),
+                        event.status()
+                ));
     }
 
     @GetMapping
-    public ResponseEntity<Flux<OrderResponse>> getOrders(@RequestParam(value = "customerId", required = false) String customerId) {
+    public Flux<OrderResponse> getOrders(@RequestParam(value = "customerId", required = false) String customerId) {
         logger.info("Received order retrieval request for customerId: {}", customerId);
-        Flux<OrderResponse> body = orderService.getOrdersByCustomer(customerId)
+        return orderService.getOrdersByCustomer(customerId)
                 //.delayElements(Duration.ofSeconds(5))   // This will cause network timeout from gateway due to
                 .doOnNext(e -> logger.info("Order retrieved: {}", e))
                 .map(e -> new OrderResponse(e.getOrderId(), e.getCustomerId(), e.getAmount(), e.getStatus()));
-
-        return ResponseEntity.ok(body);
     }
 
     @GetMapping("/{orderId}")

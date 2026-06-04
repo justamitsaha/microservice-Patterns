@@ -3,13 +3,26 @@
   <div *ngIf="error" class="error">{{error}}</div>
 
   <table>
-    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th></th></tr></thead>
+    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Actions</th></tr></thead>
     <tbody>
       <tr *ngFor="let c of customers">
         <td>{{c.id}}</td>
-        <td><a [routerLink]="['/customers', c.id]">{{c.name}}</a></td>
-        <td>{{c.email}}</td>
-        <td><button (click)="delete(c.id!)">Delete</button></td>
+        <ng-container *ngIf="editingId !== c.id">
+          <td><a [routerLink]="['/customers', c.id]">{{c.name}}</a></td>
+          <td>{{c.email}}</td>
+          <td>
+            <button (click)="startEdit(c)">Edit</button>
+            <button (click)="delete(c.id!)">Delete</button>
+          </td>
+        </ng-container>
+        <ng-container *ngIf="editingId === c.id">
+          <td><input [(ngModel)]="editName" placeholder="Name"></td>
+          <td><input [(ngModel)]="editEmail" placeholder="Email"></td>
+          <td>
+            <button (click)="saveEdit()">Save</button>
+            <button (click)="cancelEdit()">Cancel</button>
+          </td>
+        </ng-container>
       </tr>
     </tbody>
   </table>

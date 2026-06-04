@@ -25,8 +25,8 @@ CREATE SCHEMA IF NOT EXISTS microservice;
 
 -- Create the table inside the schema
 CREATE TABLE IF NOT EXISTS microservice.customers (
-                                                      id              BIGSERIAL PRIMARY KEY,
-                                                      name            VARCHAR(255) NOT NULL,
+    id              BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL,
     email           VARCHAR(255) NOT NULL,
     created_at      BIGINT NOT NULL,
     password_salt   VARCHAR(255) NOT NULL,

@@ -35,6 +35,13 @@ export class ApiService {
     });
   }
 
+  updateCustomer(id: string, c: { name: string; email: string; password?: string }): Observable<Customer> {
+    return this.http.put<Customer>(`${this.BASE}/customers/${id}`, c, {
+      headers: this.jsonHeaders,
+      withCredentials: true,
+    });
+  }
+
   getCustomerWithOrders(id: string): Observable<CustomerWithOrders> {
     return this.http.get<CustomerWithOrders>(`${this.BASE}/customers/${id}`, {
       headers: this.jsonHeaders,
@@ -57,6 +64,13 @@ export class ApiService {
       : `${this.BASE}/orders`;
 
     return this.http.get<Order[]>(url, {
+      headers: this.jsonHeaders,
+      withCredentials: true,
+    });
+  }
+
+  getOrderById(id: string): Observable<Order> {
+    return this.http.get<Order>(`${this.BASE}/orders/${id}`, {
       headers: this.jsonHeaders,
       withCredentials: true,
     });
