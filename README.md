@@ -1,269 +1,69 @@
 # Microservice Patterns Playground
 
-This repository demonstrates microservice patterns on Spring Boot WebFlux with resilience, discovery, gateway, and centralized configuration.
+This repository contains a high-level overview of a reactive, event-driven microservices architecture built using **Spring Boot WebFlux** and **Spring Cloud**. The project demonstrates key distributed system patterns such as service discovery, centralized configuration, resilient communication, and the transactional outbox pattern.
 
-## Local set up
-1. The micoservices are dependent on MySQL, Kafka, and Redis. You can run these locally or use the provided Docker Compose setup which includes all dependencies and services.To start run [docker-compose-1node-kafka-redis.yaml](setup/docker-compose-1node-kafka-redis.yaml) from the `setup` folder:
-   ```bash
-   cd _setup/docker-compose
-   docker compose -f docker-compose-1node-kafka-redis.yaml up -d
-   ```
-   This will start MySQL, a single-node Kafka cluster, and Redis. The Spring Boot services will connect to these dependencies as configured in their `application.properties` files.
-2. Start the Spring Boot services in the following order:
-   - Discovery Service: `cd discoveryService && ./mvnw spring-boot:run`
-   - Config Service: `cd configService && ./mvnw spring-boot:run`
-   - Order Service: `cd reactiveOrderService && ./mvnw spring-boot:run`
-   - Customer Service: `cd customerService && ./mvnw spring-boot:run`
-   - API Gateway: `cd gatewayService && ./mvnw spring-boot:run` (listens on `8085`)
-3. Access the services:
-   - Eureka Dashboard: `http://localhost:8761`
-   - API Gateway: `http://localhost:8085`
-   - Order Service Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-   - Customer Service Swagger UI: `http://localhost:8081/swagger-ui/index.html`
-4. You can also run the Angular web app to interact with the services via the gateway:
-   - `cd webapp`
-   - `npm install`
+This document serves as a blueprint for system design and cloud migration (e.g., to AWS / Kubernetes).
 
-## API
+---
 
-### 1. Gateway
-The `gatewayService` acts as the central entry point (Edge Server) for all client requests. It provides the following cross-cutting functionalities:
- **Dynamic Routing:**
-  - Routes requests to microservices using Eureka Service Discovery (`lb://order-service`, `lb://customer-service`).
-  - Supports path-based routing: `/orders/**` and `/customers/**`. API gateway also supports host-based, header-based, query param-based etc. but those are not used in this demo.
-- **Resilience (Resilience4j):**
-    - **Circuit Breaker:** Named breakers (`ordersCb`, `customersCb`) with fallbacks to local controllers returning 503 Service Unavailable JSON responses.
-    - **Retries:**
-        - Orders: 3 retries on 5xx errors.
-        - Customers: 2 retries (GET only) with exponential backoff on 5xx and timeouts.
-- **Security:**
-  - **JWT Validation:** Stateless authentication via `JwtAuthorizationFilter`. Validates `Bearer` tokens in the `Authorization` header.
-  - **CORS:** Configured to allow requests from the Angular webapp (supports `localhost:4200` and Dockerized `localhost:8087`).
-- **Rate Limiting:**
-  - **Redis-backed:** Uses `RedisRateLimiter` with a limit of 10 requests/sec and a burst capacity of 20.
-  - **Key Identification:** Limits are applied per client based on the `X-Client-Id` HTTP header.
-- **Custom Filters & Headers:**
-  - **Request Decoration:** Adds `X-From-Gateway: true` to all proxied requests.
-  - **Response Decoration:** Adds `X-Gateway: spring-cloud-gateway` to all client responses.
-  - **Logging Filter:** A global filter logs every incoming request path and `X-Client-Id`.
-- **Internal Handlers:**
-  - **Initialization:** Direct handling of `/init` to generate and return a `clientId` (via `InitGatewayFilter`).
-  - **Fallbacks:** Internal controller to handle circuit breaker triggers (`/fallback/**`).
-- **Observability:**
-  - **Metrics:** Exposes Prometheus metrics via Micrometer at `/actuator/prometheus`.
-  - **Tracing:** Integrated with OpenTelemetry for distributed tracing.
+## 🏗️ System Architecture Overview
+The system is designed as a set of autonomous services that communicate via synchronous REST (for queries) and asynchronous events (for state changes). It uses an **API Gateway** as the single entry point, protecting internal services with rate limiting and circuit breakers.
 
-## Endpoints
-### Initialization Endpoint (`/init`)
-The API Gateway exposes a special `/init` endpoint.
-- **Location:** Defined in `gatewayService` via `GatewayRoutesConfig` and handled by `InitGatewayFilter`.
-- **Purpose:** When invoked (e.g., via `POST /init`), it intercepts the request at the gateway level, generates a unique `clientId` (UUID), and immediately returns it as a JSON response (`{"clientId": "<uuid>"}`). This is useful for initial client handshake or session tracking without needing to route to a backend service.
-- **CORS & Preflight:** 
-  - The gateway is configured to allow `OPTIONS` preflight requests for this endpoint.
-  - Supported origins include `http://localhost:4200` (Angular dev server) and `http://localhost:8087` (Dockerized Angular app).
-  - The `JwtAuthorizationFilter` is configured to skip validation for `OPTIONS` requests to ensure preflight succeeds without a token.
-  - In the Dockerized webapp, Nginx is configured with `absolute_redirect off;` to preserve the host and port during redirects (e.g., from `/web` to `/web/`).
+---
 
-## Architecture
-- reactiveOrderService
-  - Reactive order domain service with R2DBC persistence and Kafka outbox, retry, and DLQ flows.
-  - Exposes HTTP APIs to place and query orders.
-  - Registers with Eureka and loads config from the Config Server.
-- customerService
-  - Reactive customer domain service with CRUD persistence.
-  - GET-by-id aggregates orders from the order service using a load-balanced WebClient (`http://order-service`).
-  - Resilience: circuit breaker, retry, bulkhead, and timeouts (Resilience4j) with Prometheus metrics.
-  - The WebClient bean is `@RefreshScope` so downstream base URL and other properties refresh at runtime.
-- gatewayService
-  - Spring Cloud Gateway using service discovery locator for dynamic routes (`lb://order-service`, `lb://customer-service`).
-- discoveryService
-  - Eureka server for service discovery.
-- configService
-  - Spring Cloud Config Server (native mode) for centralized configuration.
-  - Participates in Spring Cloud Bus (Kafka) for distributed config refresh.
+## 📦 Containerized Components
+The architecture consists of three logical groups of containers:
 
-## Tech Stack
-- Java 21+, Spring Boot 3 (WebFlux, Actuator)
-- Project Reactor (Mono/Flux)
-- R2DBC with MySQL
-- Micrometer metrics (Prometheus ready) + Micrometer Tracing (OpenTelemetry bridge)
-- Spring Cloud: Gateway, Eureka, Config, Bus (Kafka)
-- Resilience4j: CircuitBreaker, Retry, Bulkhead, TimeLimiter
-- OpenAPI via springdoc
-- Kafka (reactive) in order service with outbox, retry, and DLT
+### 1. Core Microservices (Java/Spring Boot)
+| Container | Responsibility | Technology |
+| :--- | :--- | :--- |
+| **discovery-service** | Service registration and heartbeats. | Netflix Eureka |
+| **config-service** | Centralized property management with Git backend. | Spring Cloud Config |
+| **gateway-service** | Request routing, security, and global rate limiting. | Spring Cloud Gateway |
+| **customer-service** | Manages user profiles and aggregates order history. | Reactive Spring Data R2DBC |
+| **order-service** | Lifecycle of orders using Transactional Outbox. | Reactive Spring Data R2DBC |
+| **web-app** | Single Page Application (SPA) for end-user interaction. | Angular |
 
-## How It Works
-1. Client places an order via `POST /orders` (order service). The order is persisted and an outbox record is created for Kafka publishing.
-2. Clients can fetch orders via `GET /orders`, `GET /orders?customerId=...`, or `GET /orders/{orderId}`.
-3. Clients manage customers via CRUD. `GET /customers/{id}` loads the customer and calls `GET /orders?customerId=...` from the order service to include orders in the response.
-4. Gateway routes `/orders/**` and `/customers/**` via service discovery.
-5. All services pull their configuration from Config Server; changes can be refreshed live using the refresh endpoints.
-6. Traces are exported via OpenTelemetry OTLP; metrics are exposed at `/actuator/prometheus`.
+### 2. Infrastructure Containers (Backing Services)
+*   **Database (MySQL):** Relational storage for order data.
+*   **Database (Postgres):** Relational storage for customer data.
+*   **Message Broker (Kafka):** Distributed event streaming for order events and config bus.
+*   **In-Memory Store (Redis):** Distributed rate limiting and session-related data.
+*   **Schema Registry:** Management of Avro/Protobuf schemas for event serialization.
+*   **Coordination (Zookeeper):** Coordination for the Kafka cluster state.
 
-## Services
-### Order Service
-- Path: `reactiveOrderService`
-- Run: `cd reactiveOrderService && ./mvnw spring-boot:run`
-- Key endpoints:
-  - `POST /orders`
-  - `GET /orders`
-  - `GET /orders?customerId={id}`
-  - `GET /orders/{orderId}`
-- Discovery ID: `order-service`; reads centralized config.
+### 3. Observability Containers (Telemetry Stack)
+*   **OTel Collector:** Central pipeline for receiving and exporting telemetry data.
+*   **Prometheus:** Time-series database for metrics aggregation.
+*   **Grafana:** Unified visualization dashboard for metrics, logs, and traces.
+*   **Tempo / Jaeger:** Storage and querying for distributed traces.
+*   **Loki:** Log aggregation and storage.
+*   **Promtail:** Log collector that ships container logs to Loki.
 
-### Customer Service
-- Path: `customerService`
-- Run: `cd customerService && ./mvnw spring-boot:run`
-- Key endpoints:
-  - `POST /customers`
-  - `GET /customers`
-  - `GET /customers/{id}` (includes orders)
-  - `PUT /customers/{id}`
-  - `DELETE /customers/{id}`
-- Resilience: timeout + circuit breaker + retry + bulkhead; fallback returns a placeholder order with status `SERVICE_UNAVAILABLE`.
-- Discovery ID: `customer-service`; reads centralized config.
+---
 
-### API Gateway
-- Path: `gatewayService`
-- Run: `cd gatewayService && ./mvnw spring-boot:run`
-- Routing is defined via a Spring bean RouteLocator.
-  - See: `gatewayService/src/main/java/com/saha/amit/gateway/config/GatewayRoutesConfig.java:1`
-  - Routes:
-    - `/orders/**` -> `lb://order-service`
-    - `/customers/**` -> `lb://customer-service`
-- Discovery locator is disabled in `application.yml` to avoid conflicts with bean routes.
+## 🚀 Deployment Archetypes
+The system can be deployed in different configurations depending on the environment (e.g., K8s namespaces or clusters).
 
-Filters applied
-- Headers: Adds `X-From-Gateway: true` to outbound requests and `X-Gateway: spring-cloud-gateway` to responses.
-- Retry: Retries upstream on 5xx (3 times orders, 2 times customers).
-- Circuit Breaker: Uses Spring Cloud CircuitBreaker (Resilience4j) with fallbacks:
-  - Orders fallback: `forward:/fallback/orders`
-  - Customers fallback: `forward:/fallback/customers`
-  - See controller: `gatewayService/src/main/java/com/saha/amit/gateway/controller/FallbackController.java:1`
-- Rate Limiting: RequestRateLimiter filter via RedisRateLimiter (10 req/s, burst 20) by client IP.
-  - Requires Redis. In Docker Compose, `redis` is provided.
-  - For local runs, set `SPRING_DATA_REDIS_HOST=localhost` (default) or to your Redis host.
-- Path Rewrite: Additional routes accept `/api/orders/**` and `/api/customers/**` and rewrite to backend `/orders/**` and `/customers/**`.
+### A. Full Observability Archetype
+This configuration deploys the **complete ecosystem** (All 18+ containers listed above).
+- **Goal:** Comprehensive monitoring, tracing, and logging for production-like environments or performance testing.
+- **Connectivity:** All microservices are configured to export telemetry data to the OTel Collector.
 
-Examples
-- Call orders through gateway: `curl -i http://localhost:8085/orders`
-- Path rewrite: `curl -i http://localhost:8085/api/orders`
-- Observe gateway headers: `curl -i http://localhost:8085/orders | grep -i x-gateway`
-- Simulate fallback (stop the target service) then call: `curl -i http://localhost:8085/orders` → returns 503 with JSON from fallback.
+### B. Minimal Core Archetype
+This configuration deploys only the **essential components** required for functionality.
+- **Core Containers:** Microservices + Infrastructure (Kafka, Redis, Databases).
+- **Excluded Containers:** The entire Observability Stack.
+- **Optimization:** Microservices have telemetry export (`otlp.endpoint`) disabled to save CPU and Memory resources. This is ideal for lightweight development environments.
 
-### Discovery Service
-- Path: `discoveryService`
-- Run: `cd discoveryService && ./mvnw spring-boot:run`
-- Dashboard: `http://localhost:8761`
+---
 
-### Config Service
-- Path: `configService`
-- Run: `cd configService && ./mvnw spring-boot:run`
-- Mode: `native` (reads configs from `configService/src/main/resources/config`)
-- Central configs for: `order-service`, `customer-service`, `gateway-service`
-- Spring Cloud Bus (Kafka) enabled for broadcasting refresh events
+## 📂 Detailed Technical Documentation
+For deep-dives into specific implementation details, please refer to the files in the `_documentation/` folder:
 
-Config files:
-- Order: `configService/src/main/resources/config/order-service.properties`
-- Customer: `configService/src/main/resources/config/customer-service.properties`
-- Gateway: `configService/src/main/resources/config/gateway-service.yml`
-
-## Kafka (Order Service)
-- Outbox pattern persists events and a background publisher sends to Kafka.
-- Retry and DLQ topics configured; see `application.properties` and `KafkaConfig` for details.
-- Protobuf + Schema Registry example included.
-
-## Running Locally
-1. Start MySQL (or update R2DBC URL to your DB).
-2. Start the discovery server: `cd discoveryService && ./mvnw spring-boot:run`
-3. Start the config server: `cd configService && ./mvnw spring-boot:run`
-4. Start the order service: `cd reactiveOrderService && ./mvnw spring-boot:run`
-5. Start the customer service: `cd customerService && ./mvnw spring-boot:run`
-6. Start the API Gateway: `cd gatewayService && ./mvnw spring-boot:run` (listens on `8085`)
-7. Start the Angular web app:
-   - `cd webapp`
-   - `npm install`
-   - `npm start` (opens http://localhost:4200)
-   - Angular dev server proxies `/api` -> `http://localhost:8085`, so the UI calls the gateway automatically.
-
-Swagger UIs:
-- Order: `http://localhost:8080/swagger-ui/index.html`
-- Customer: `http://localhost:8081/swagger-ui/index.html`
-
-Gateway routes (via discovery):
-- `http://localhost:8085/orders/**` -> order service
-- `http://localhost:8085/customers/**` -> customer service
-
-## Angular Test App
-- Path: `webapp`
-- Purpose: simple UI to exercise customers and orders APIs via the gateway.
-- Proxy: `webapp/proxy.conf.json` forwards `/api` to `http://localhost:8085`.
-- Usage:
-  - Login page: login or register a new customer account.
-  - Customers tab: list customers, click a row to fetch orders for that customer.
-  - Orders tab: create/list orders; filter by `customerId`.
-- Key files:
-  - `webapp/src/app/services/api.service.ts`: API client using Angular HttpClient.
-  - `webapp/src/app/app.component.ts`: shell with Material toolbar and routing.
-  - `webapp/src/app/customers.component.ts`: Material form/table for customers with toasts and validation.
-  - `webapp/src/app/orders.component.ts`: Material form/table for orders with toasts and validation.
-
-Build and run with Docker:
-- `cd webapp`
-- `docker build -t microservice-webapp:dev .`
-- `docker run -p 8087:80 microservice-webapp:dev`
-- Open `http://localhost:8087`
-
-## Centralized Config + Live Refresh
-- All services import remote config: `spring.config.import=optional:configserver:http://localhost:8888`.
-- Edit config files under `configService/src/main/resources/config` to change properties centrally.
-
-Refresh options (Actuator):
-- Local instance only: `POST http://localhost:<service-port>/actuator/refresh`
-- Broadcast to all (Spring Cloud Bus via Kafka): `POST http://localhost:8888/actuator/busrefresh`
-
-Notes:
-- The customer `orderWebClient` bean is `@RefreshScope`, so changes to `app.order-service.base-url` and similar apply after refresh without restarting.
-- Spring Cloud Bus (Kafka) requires reachable brokers. Bootstrap servers are configured centrally in the config server files for all services.
-
-## Observability
-- Tracing
-  - Enabled via Micrometer Tracing + OpenTelemetry bridge.
-  - Configure endpoint: `management.otlp.tracing.endpoint` (default `http://localhost:4318/v1/traces`).
-  - Sampling rate: `management.tracing.sampling.probability` (default `1.0` in dev).
-- Metrics
-  - Prometheus scrape endpoint: `GET /actuator/prometheus` on each service.
-  - Percentiles/SLOs configured for `http.server.requests`.
-  - Resilience4j exports circuit breaker, retry, bulkhead metrics via Micrometer.
-- Alerts
-  - Sample Prometheus alert rules: `observability/prometheus-alerts.yml` (p95 latency, circuit breaker open, gateway 5xx rates).
-  - Import into your Prometheus Alertmanager setup and adjust thresholds to your SLOs.
- - Traces in Grafana
-   - Tempo is included in Docker Compose; Grafana is pre-wired with a Tempo datasource.
-   - Use Grafana Explore → select Tempo → search by service (order-service, customer-service, gateway-service).
-   - Optional dashboard: `observability/grafana/dashboards/tracing-overview.json` provides guidance and an exemplars time series.
-
-## Infra via Docker Compose
-- Path: `setup/docker-compose.yaml`
-- Starts: Zookeeper, 3x Kafka brokers, Schema Registry, OpenTelemetry Collector (OTLP 4317/4318), Tempo (traces) (3200), Jaeger UI (16686), Prometheus (9090), Grafana (3000), and all Spring services (discovery, config, order, customer, gateway).
-- Bring up:
-  - `cd setup && docker compose up -d`
-- Access:
-  - Prometheus: `http://localhost:9090`
-  - Grafana: `http://localhost:3000` (user `admin` / `admin`)
-  - Jaeger UI: `http://localhost:16686`
-- Prometheus scrapes services on the host via `host.docker.internal:<port>/actuator/prometheus`.
-- Grafana auto-provisions a Prometheus datasource and loads dashboards from:
-  - `observability/grafana/dashboards/http-overview.json`
-  - `observability/grafana/dashboards/resilience4j.json`
-  - `observability/grafana/dashboards/tracing-overview.json`
-- Alerts loaded from: `observability/prometheus-alerts.yml` (mounted into Prometheus).
-
-Notes:
-- The OpenTelemetry Collector currently logs incoming traces/metrics. To persist or query traces, add a backend (e.g., Jaeger or Tempo) and update `setup/otel-collector/config.yaml` exporters.
-  - Already wired to Tempo and Jaeger; you can use Grafana Tempo datasource or Jaeger UI to inspect traces.
-  - Services run inside Docker compose as well; Prometheus scrapes both host and container targets.
-
-## Future Enhancements
-- Distributed tracing (OpenTelemetry), dashboards, and rate limiting.
-- Kafka Streams aggregations and CQRS read models.
+*   [**Business Logic:**](./_documentation/CustomerService_Logic.md) Functional breakdown of services.
+*   [**Resilience & Fallbacks:**](./_documentation/CustomerService_Fallback.md) Circuit breakers, retries, and timeouts.
+*   [**Rate Limiting:**](./_documentation/RateLimiting.md) Multi-tier protection using cookies and IP.
+*   [**Centralized Config:**](./_documentation/ConfigServer.md) Setup for dynamic property updates and secrets.
+*   [**Observability:**](./_documentation/Actuator.md) Guide to Actuator endpoints and metrics exploration.
+*   [**Distributed Tracing:**](./_documentation/Distributed_tracing.md) Detailed tracing architecture.
