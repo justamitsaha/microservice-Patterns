@@ -49,11 +49,16 @@ public class OutboxPublisher {
     public void start() {
         log.info("Starting OutboxPublisher with pollInterval={} batchSize={}", pollInterval, batchSize);
         subscription = Flux.interval(Duration.ZERO, pollInterval)
-                .flatMap(tick -> outboxRepository.findNextBatch(Instant.now(), batchSize))
-                .doOnNext(orderOutboxEntity -> log.info("Dispatching outbox record id={} attempt={}", orderOutboxEntity.getId(), orderOutboxEntity.getAttempts()))
-                .flatMap(this::publishOutboxRecord, 1)
+                .flatMap(tick -> publishPendingRecords())
                 .onErrorContinue((ex, record) -> log.error("Outbox dispatch errored: {}", ex.getMessage()))
                 .subscribe();
+    }
+
+    public Mono<Void> publishPendingRecords() {
+        return outboxRepository.findNextBatch(Instant.now(), batchSize)
+                .doOnNext(orderOutboxEntity -> log.debug("Dispatching outbox record id={} attempt={}", orderOutboxEntity.getId(), orderOutboxEntity.getAttempts()))
+                .flatMap(this::publishOutboxRecord, 1)
+                .then();
     }
 
     @PreDestroy

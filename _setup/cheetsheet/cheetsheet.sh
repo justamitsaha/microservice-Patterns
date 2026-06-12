@@ -6,9 +6,12 @@ docker compose ps #List containers
 docker compose logs -f gateway-service #Follow logs of a specific container
 docker exec -it kafka1 bash #Access the bash shell of a specific container
 docker stats #Display a live stream of container resource usage statistics
-docker compose -f docker-compose-observability.yaml down #Stop and remove containers for a specific compose file
-docker compose -f docker-compose-observability.yaml up -d #Start containers for a specific
+
+docker compose -f small-load-docker-compose.yaml down #Stop and remove containers for a specific compose file
+docker compose -f small-load-docker-compose.yaml up -d #Start containers for a specific
+docker compose -f small-load-docker-compose.yaml down -v #Stop and remove containers and volumes for a specific compose file
 docker compose up -d --force-recreate --pull always web-app #Recreate containers and pull the latest images for web-app service
+
 docker-compose restart SERVICE
 docker-compose up -d --build --force-recreate SERVICE
 

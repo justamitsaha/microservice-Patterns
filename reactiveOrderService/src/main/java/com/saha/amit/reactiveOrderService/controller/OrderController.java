@@ -2,6 +2,7 @@ package com.saha.amit.reactiveOrderService.controller;
 
 import com.saha.amit.reactiveOrderService.dto.OrderRequest;
 import com.saha.amit.reactiveOrderService.dto.OrderResponse;
+import com.saha.amit.reactiveOrderService.messanger.OutboxPublisher;
 import com.saha.amit.reactiveOrderService.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -9,17 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -30,6 +26,7 @@ public class OrderController {
     Logger logger = LoggerFactory.getLogger(OrderController.class);
 
     private final OrderService orderService;
+    private final OutboxPublisher outboxPublisher;
 
     @Value("${order.discount:5}")
     private String discountPercentage;
@@ -47,6 +44,13 @@ public class OrderController {
                         event.amount(),
                         event.status()
                 ));
+    }
+
+    @PostMapping("/outbox/publish")
+    public Mono<ResponseEntity<Map<String, String>>> triggerOutboxPublish() {
+        logger.info("Manual outbox publish triggered via API");
+        return outboxPublisher.publishPendingRecords()
+                .thenReturn(ResponseEntity.ok(Map.of("message", "Outbox publishing triggered successfully")));
     }
 
     @GetMapping

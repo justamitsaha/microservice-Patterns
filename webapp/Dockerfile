@@ -32,3 +32,6 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 #   -e APP_THEME_COLOR="#2196f3" \
 #   my-webapp:local
 
+#docker build -t justamitsaha/new-ms-webapp:;v1 .
+#docker run -p 8087:80 -d justamitsaha/new-ms-webapp:v1
+#Open `http://localhost:8087

@@ -8,6 +8,7 @@
   <div class="row" style="gap:8px;">
     <input name="filter" [(ngModel)]="filterCustomerId" placeholder="Filter by customerId">
     <button (click)="load()">Refresh</button>
+    <button (click)="triggerOutbox()" style="background-color: #ff9800; color: white; border: none; padding: 4px 8px; cursor: pointer;">Trigger Outbox Publish</button>
   </div>
   <div *ngIf="error" class="error">{{error}}</div>
 

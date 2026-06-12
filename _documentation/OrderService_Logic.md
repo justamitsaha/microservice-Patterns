@@ -21,14 +21,9 @@ The service implements the **Transactional Outbox Pattern** to ensure that local
 3.  **Consistency:** By saving both to the same DB in one transaction, we guarantee that an event is only "queued" if the order is successfully saved.
 
 ### B. Reliable Event Dispatch (`OutboxPublisher`)
-A background worker (`OutboxPublisher`) ensures the events are eventually published to Kafka.
-1.  **Polling:** Every second (configurable), it polls for `PENDING` records in the outbox table.
-2.  **Publishing:** Sends the event to Kafka.
-    *   *Protobuf Support:* Can be configured to use Protobuf serialization instead of JSON.
-3.  **State Update:**
-    *   **Success:** Marks outbox record as `PUBLISHED`.
-    *   **Failure:** Updates the `attempts` count and schedules a retry with exponential backoff.
-    *   **Max Attempts:** If a record fails 5 times, it is marked as `FAILED` to prevent infinite loops.
+Events can be dispatched to Kafka in two ways:
+1.  **Automatic Polling:** Every second (configurable), the `OutboxPublisher` polls for `PENDING` records and sends them to Kafka.
+2.  **Manual Trigger (API):** The service exposes a `POST /orders/outbox/publish` endpoint. This allows external systems or the UI to force an immediate dispatch of all pending outbox records without waiting for the next poll cycle.
 
 ### C. Kafka Resilience (Retry & DLQ)
 The service integrates with Kafka's built-in resilience features:

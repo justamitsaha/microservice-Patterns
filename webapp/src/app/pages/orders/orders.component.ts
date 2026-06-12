@@ -39,6 +39,13 @@ export class OrdersComponent implements OnInit {
     });
   }
 
+  triggerOutbox() {
+    this.api.triggerOutboxPublish().subscribe({
+      next: res => alert(res.message),
+      error: err => this.error = err.message
+    });
+  }
+
   viewDetail(id: string) {
     this.api.getOrderById(id).subscribe({
       next: o => alert(`Order Details:\nID: ${o.orderId}\nStatus: ${o.status}\nAmount: ${o.amount}`),

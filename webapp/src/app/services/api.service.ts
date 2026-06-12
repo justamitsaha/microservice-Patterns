@@ -83,6 +83,13 @@ export class ApiService {
     });
   }
 
+  triggerOutboxPublish(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.BASE}/orders/outbox/publish`, {}, {
+      headers: this.jsonHeaders,
+      withCredentials: true,
+    });
+  }
+
   // ------------------ Login ------------------
 
   login(email: string, password: string): Observable<{ success: boolean; message: string }> {
