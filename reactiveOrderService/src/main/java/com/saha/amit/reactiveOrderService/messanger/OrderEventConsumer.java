@@ -28,6 +28,7 @@ public class OrderEventConsumer {
 
     private final KafkaReceiver<String, OrderEvent> kafkaReceiver;
     private final KafkaReceiver<String, OrderEvent> retryKafkaReceiver;
+    private final KafkaReceiver<String, com.saha.amit.reactiveOrderService.proto.OrderEventMessage> protobufKafkaReceiver;
     private final DltPublisher dltPublisher;
     private final RetryEventPublisher retryEventPublisher;
     private final MeterRegistry meterRegistry;
@@ -35,16 +36,22 @@ public class OrderEventConsumer {
     @Value("${app.kafka.retry.max-attempts:3}")
     private int maxAttempts;
 
+    @Value("${order.use-protobuf:false}")
+    private boolean useProtobuf;
+
     private Disposable mainSubscription;
     private Disposable retrySubscription;
+    private Disposable protoSubscription;
 
     public OrderEventConsumer(@Qualifier("jsonKafkaReceiver")KafkaReceiver<String, OrderEvent> kafkaReceiver,
                               @Qualifier("retryKafkaReceiver")KafkaReceiver<String, OrderEvent> retryKafkaReceiver,
+                              @Qualifier("protobufKafkaReceiver")KafkaReceiver<String, com.saha.amit.reactiveOrderService.proto.OrderEventMessage> protobufKafkaReceiver,
                               DltPublisher dltPublisher,
                               RetryEventPublisher retryEventPublisher,
                               MeterRegistry meterRegistry) {
         this.kafkaReceiver = kafkaReceiver;
         this.retryKafkaReceiver = retryKafkaReceiver;
+        this.protobufKafkaReceiver = protobufKafkaReceiver;
         this.dltPublisher = dltPublisher;
         this.retryEventPublisher = retryEventPublisher;
         this.meterRegistry = meterRegistry;
@@ -52,25 +59,39 @@ public class OrderEventConsumer {
 
     @PostConstruct
     public void start() {
-        log.info("Starting OrderEventConsumer with maxAttempts={}", maxAttempts);
-        this.mainSubscription = subscribe(kafkaReceiver, false);
+        log.info("Starting OrderEventConsumer with maxAttempts={}, useProtobuf={}", maxAttempts, useProtobuf);
+        if (useProtobuf) {
+            this.protoSubscription = subscribeProto(protobufKafkaReceiver);
+        } else {
+            this.mainSubscription = subscribe(kafkaReceiver, false);
+        }
         this.retrySubscription = subscribe(retryKafkaReceiver, true);
     }
 
     @PreDestroy
     public void shutdown() {
-        if (mainSubscription != null) {
-            mainSubscription.dispose();
-        }
-        if (retrySubscription != null) {
-            retrySubscription.dispose();
-        }
+        if (mainSubscription != null) mainSubscription.dispose();
+        if (retrySubscription != null) retrySubscription.dispose();
+        if (protoSubscription != null) protoSubscription.dispose();
     }
 
     private Disposable subscribe(KafkaReceiver<String, OrderEvent> receiver, boolean isRetryTopic) {
         return receiver.receive()
-                .flatMap(record -> processRecord(record, isRetryTopic).thenReturn(record))
-                .doOnError(ex -> log.error("Error consuming Kafka events", ex))
+                .concatMap(record -> processRecord(record, isRetryTopic).thenReturn(record))
+                .doOnError(ex -> log.error("Error consuming JSON Kafka events", ex))
+                .retryWhen(Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5)))
+                .subscribe();
+    }
+
+    private Disposable subscribeProto(KafkaReceiver<String, com.saha.amit.reactiveOrderService.proto.OrderEventMessage> receiver) {
+        return receiver.receive()
+                .concatMap(record -> {
+                    com.saha.amit.reactiveOrderService.proto.OrderEventMessage msg = record.value();
+                    log.info("Received Protobuf eventId={} from topic={}", msg.getEventId(), record.topic());
+                    // For demo purposes, we just acknowledge Protobuf messages
+                    return Mono.fromRunnable(record.receiverOffset()::acknowledge).thenReturn(record);
+                })
+                .doOnError(ex -> log.error("Error consuming Protobuf Kafka events", ex))
                 .retryWhen(Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5)))
                 .subscribe();
     }

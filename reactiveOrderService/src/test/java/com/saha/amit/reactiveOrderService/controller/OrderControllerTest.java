@@ -1,12 +1,13 @@
 package com.saha.amit.reactiveOrderService.controller;
 
 import com.saha.amit.reactiveOrderService.dto.OrderRequest;
+import com.saha.amit.reactiveOrderService.dto.OrderResponse;
 import com.saha.amit.reactiveOrderService.events.OrderEvent;
+import com.saha.amit.reactiveOrderService.messanger.OutboxPublisher;
 import com.saha.amit.reactiveOrderService.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -16,12 +17,15 @@ import static org.mockito.Mockito.*;
 class OrderControllerTest {
 
     private OrderService orderService;
+    private OutboxPublisher outboxPublisher;
     private OrderController controller;
 
     @BeforeEach
     void setUp() {
         orderService = mock(OrderService.class);
-        controller = new OrderController(orderService);
+        outboxPublisher = mock(OutboxPublisher.class);
+        controller = new OrderController(orderService, outboxPublisher);
+        ReflectionTestUtils.setField(controller, "discountPercentage", "0");
     }
 
     //@Test
@@ -33,10 +37,9 @@ class OrderControllerTest {
         OrderEvent event = OrderEvent.create("order-1", "cust-1", 42.0, "PLACED");
         when(orderService.placeOrder("cust-1", 42.0)).thenReturn(Mono.just(event));
 
-        ResponseEntity<Mono<com.saha.amit.reactiveOrderService.dto.OrderResponse>> response = controller.placeOrder(request);
+        Mono<OrderResponse> response = controller.placeOrder(request);
 
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        StepVerifier.create(response.getBody())
+        StepVerifier.create(response)
                 .assertNext(orderResponse -> {
                     assertThat(orderResponse.getCustomerId()).isEqualTo("cust-1");
                     assertThat(orderResponse.getAmount()).isEqualTo(42.0);

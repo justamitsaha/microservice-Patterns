@@ -55,7 +55,14 @@ public class OutboxPublisher {
     }
 
     public Mono<Void> publishPendingRecords() {
-        return outboxRepository.findNextBatch(Instant.now(), batchSize)
+        return outboxRepository.findNextBatch(batchSize)
+                .collectList()
+                .doOnNext(list -> {
+                    if (!list.isEmpty()) {
+                        log.info("🔍 Found {} pending outbox records to publish", list.size());
+                    }
+                })
+                .flatMapMany(Flux::fromIterable)
                 .doOnNext(orderOutboxEntity -> log.debug("Dispatching outbox record id={} attempt={}", orderOutboxEntity.getId(), orderOutboxEntity.getAttempts()))
                 .flatMap(this::publishOutboxRecord, 1)
                 .then();

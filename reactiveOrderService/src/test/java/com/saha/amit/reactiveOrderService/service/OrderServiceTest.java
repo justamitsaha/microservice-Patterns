@@ -1,6 +1,7 @@
 package com.saha.amit.reactiveOrderService.service;
 
 import com.saha.amit.reactiveOrderService.events.OrderEvent;
+import com.saha.amit.reactiveOrderService.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -14,12 +15,14 @@ import static org.mockito.Mockito.*;
 class OrderServiceTest {
 
     private OutboxService outboxService;
+    private OrderRepository orderRepository;
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
         outboxService = mock(OutboxService.class);
-        //orderService = new OrderService(outboxService);
+        orderRepository = mock(OrderRepository.class);
+        orderService = new OrderService(outboxService, orderRepository);
     }
 
     //@Test

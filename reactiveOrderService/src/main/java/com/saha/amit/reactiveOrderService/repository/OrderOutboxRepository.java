@@ -16,10 +16,9 @@ public interface OrderOutboxRepository extends ReactiveCrudRepository<OrderOutbo
     @Query("""
             SELECT * FROM order_outbox
             WHERE status <> 'PUBLISHED'
-              AND available_at <= :now
+              AND available_at <= CURRENT_TIMESTAMP
             ORDER BY created_at
             LIMIT :batchSize
             """)
-    Flux<OrderOutboxEntity> findNextBatch(@Param("now") Instant now,
-                                          @Param("batchSize") int batchSize);
+    Flux<OrderOutboxEntity> findNextBatch(@Param("batchSize") int batchSize);
 }

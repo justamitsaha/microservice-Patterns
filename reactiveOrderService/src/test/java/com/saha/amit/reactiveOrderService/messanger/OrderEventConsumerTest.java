@@ -22,6 +22,7 @@ class OrderEventConsumerTest {
 
     private KafkaReceiver<String, OrderEvent> mainReceiver;
     private KafkaReceiver<String, OrderEvent> retryReceiver;
+    private KafkaReceiver<String, com.saha.amit.reactiveOrderService.proto.OrderEventMessage> protoReceiver;
     private DltPublisher dltPublisher;
     private RetryEventPublisher retryEventPublisher;
     private SimpleMeterRegistry meterRegistry;
@@ -31,10 +32,11 @@ class OrderEventConsumerTest {
     void setUp() {
         mainReceiver = mock(KafkaReceiver.class);
         retryReceiver = mock(KafkaReceiver.class);
+        protoReceiver = mock(KafkaReceiver.class);
         dltPublisher = mock(DltPublisher.class);
         retryEventPublisher = mock(RetryEventPublisher.class);
         meterRegistry = new SimpleMeterRegistry();
-        consumer = new OrderEventConsumer(mainReceiver, retryReceiver, dltPublisher, retryEventPublisher, meterRegistry);
+        consumer = new OrderEventConsumer(mainReceiver, retryReceiver, protoReceiver, dltPublisher, retryEventPublisher, meterRegistry);
         ReflectionTestUtils.setField(consumer, "maxAttempts", 3);
     }
 
